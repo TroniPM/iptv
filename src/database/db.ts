@@ -24,6 +24,15 @@ class IPTVDatabase extends Dexie {
       channels: '++id, playlistId, name, group, tvgId, url',
       settings: 'id',
     })
+
+    // v2: adiciona campo language nas configurações
+    this.version(2).stores({
+      playlists: '++id, name, source, createdAt',
+      channels: '++id, playlistId, name, group, tvgId, url',
+      settings: 'id',
+    }).upgrade(async (tx) => {
+      await tx.table('settings').update(1, { language: 'pt-BR' })
+    })
   }
 }
 
@@ -42,6 +51,7 @@ db.on('ready', async () => {
       proxyUrl: '',
       lastChannelId: null,
       lastPlaylistId: null,
+      language: 'pt-BR',
     } satisfies SettingsRecord)
   }
 })

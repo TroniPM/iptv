@@ -6,10 +6,12 @@ import AppButton from '@/components/ui/AppButton.vue'
 import AppModal from '@/components/ui/AppModal.vue'
 import AppToggle from '@/components/ui/AppToggle.vue'
 import { db } from '@/database/db'
+import { useI18n } from '@/i18n'
 import type { Playlist, Channel } from '@/types'
 
 const playlistStore = usePlaylistStore()
 const settingsStore = useSettingsStore()
+const { t, tParam, locale } = useI18n()
 
 // ─── Modal de importação ──────────────────────────────────────────────────────
 const showImportModal = ref(false)
@@ -38,19 +40,19 @@ async function handleFileChange(e: Event) {
 async function submitImport() {
   importError.value = null
   if (!importName.value.trim()) {
-    importError.value = 'Informe um nome para a lista.'
+    importError.value = t('manage.error.noName')
     return
   }
   try {
     if (importTab.value === 'url') {
       if (!importUrl.value.trim()) {
-        importError.value = 'Informe a URL da lista M3U.'
+        importError.value = t('manage.error.noUrl')
         return
       }
       await playlistStore.importFromUrl(importUrl.value.trim(), importName.value.trim())
     } else {
       if (!importText.value.trim()) {
-        importError.value = 'Nenhum arquivo selecionado ou conteúdo vazio.'
+        importError.value = t('manage.error.noFile')
         return
       }
       await playlistStore.importFromText(
@@ -62,7 +64,7 @@ async function submitImport() {
     }
     showImportModal.value = false
   } catch {
-    importError.value = playlistStore.error ?? 'Erro desconhecido ao importar.'
+    importError.value = playlistStore.error ?? t('manage.error.import')
   }
 }
 
@@ -83,7 +85,7 @@ async function saveEdit() {
 
 // ─── Exclusão ─────────────────────────────────────────────────────────────────
 async function confirmDelete(pl: Playlist) {
-  if (!confirm(`Excluir a lista "${pl.name}" e todos os seus canais?`)) return
+  if (!confirm(tParam('manage.confirm.deleteList', { name: pl.name }))) return
   await playlistStore.deletePlaylist(pl.id!)
   if (managePl.value?.id === pl.id) managePl.value = null
 }
@@ -175,7 +177,7 @@ async function deleteGroup(groupName: string) {
   if (!managePl.value) return
   const chs = await db.channels.where('playlistId').equals(managePl.value.id!).toArray()
   const toDelete = chs.filter(ch => (ch.group?.trim() || '(Sem grupo)') === groupName)
-  if (!confirm(`Excluir o grupo "${groupName}" e seus ${toDelete.length} canal(is)?`)) return
+  if (!confirm(tParam('manage.confirm.deleteGroup', { name: groupName, count: toDelete.length }))) return
   await db.channels.bulkDelete(toDelete.map(ch => ch.id!))
   await refreshManageGroups(managePl.value.id!)
 }
@@ -275,8 +277,8 @@ onMounted(async () => {
     <!-- ── Seção: Listas ─────────────────────────────────────────── -->
     <section>
       <div class="flex items-center justify-between mb-4">
-        <h1 class="text-lg font-semibold text-white">Minhas Listas M3U</h1>
-        <AppButton @click="openImport">+ Importar Lista</AppButton>
+        <h1 class="text-lg font-semibold text-white">{{ t('manage.title') }}</h1>
+        <AppButton @click="openImport">{{ t('manage.import.button') }}</AppButton>
       </div>
 
       <!-- Empty state -->
@@ -284,8 +286,8 @@ onMounted(async () => {
         v-if="playlistStore.playlists.length === 0"
         class="border-2 border-dashed border-zinc-700 rounded-lg p-10 text-center text-zinc-600"
       >
-        <p class="text-sm">Nenhuma lista importada.</p>
-        <p class="text-xs mt-1">Clique em "Importar Lista" para começar.</p>
+        <p class="text-sm">{{ t('manage.empty.line1') }}</p>
+        <p class="text-xs mt-1">{{ t('manage.empty.line2') }}</p>
       </div>
 
       <!-- Tabela de listas -->
@@ -293,10 +295,10 @@ onMounted(async () => {
         <table class="w-full text-sm text-zinc-300">
           <thead class="bg-zinc-900 text-zinc-500 text-xs uppercase tracking-wider">
             <tr>
-              <th class="px-4 py-3 text-left">Nome</th>
-              <th class="px-4 py-3 text-left hidden md:table-cell">Origem</th>
-              <th class="px-4 py-3 text-left hidden lg:table-cell">Adicionada em</th>
-              <th class="px-4 py-3 text-right">Ações</th>
+              <th class="px-4 py-3 text-left">{{ t('manage.table.name') }}</th>
+              <th class="px-4 py-3 text-left hidden md:table-cell">{{ t('manage.table.source') }}</th>
+              <th class="px-4 py-3 text-left hidden lg:table-cell">{{ t('manage.table.addedAt') }}</th>
+              <th class="px-4 py-3 text-right">{{ t('manage.table.actions') }}</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-zinc-800">
@@ -325,23 +327,23 @@ onMounted(async () => {
                   class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
                   :class="pl.source === 'url' ? 'bg-blue-900/50 text-blue-300' : 'bg-emerald-900/50 text-emerald-300'"
                 >
-                  {{ pl.source === 'url' ? '🌐 URL' : '📁 Arquivo' }}
+                  {{ pl.source === 'url' ? t('manage.source.url') : t('manage.source.file') }}
                 </span>
               </td>
 
               <td class="px-4 py-3 hidden lg:table-cell text-zinc-500 text-xs">
-                {{ new Date(pl.createdAt).toLocaleDateString('pt-BR') }}
+                {{ new Date(pl.createdAt).toLocaleDateString(locale) }}
               </td>
 
               <td class="px-4 py-3 text-right" @click.stop>
                 <div class="flex items-center justify-end gap-2">
                   <template v-if="editingPlaylist?.id === pl.id">
-                    <AppButton size="sm" @click="saveEdit">Salvar</AppButton>
-                    <AppButton size="sm" variant="ghost" @click="editingPlaylist = null">Cancelar</AppButton>
+                    <AppButton size="sm" @click="saveEdit">{{ t('manage.action.save') }}</AppButton>
+                    <AppButton size="sm" variant="ghost" @click="editingPlaylist = null">{{ t('manage.action.cancel') }}</AppButton>
                   </template>
                   <template v-else>
-                    <AppButton size="sm" variant="secondary" @click="startEdit(pl)">Renomear</AppButton>
-                    <AppButton size="sm" variant="danger" @click="confirmDelete(pl)">Excluir</AppButton>
+                    <AppButton size="sm" variant="secondary" @click="startEdit(pl)">{{ t('manage.action.rename') }}</AppButton>
+                    <AppButton size="sm" variant="danger" @click="confirmDelete(pl)">{{ t('manage.action.delete') }}</AppButton>
                   </template>
                 </div>
               </td>
@@ -363,7 +365,7 @@ onMounted(async () => {
           <!-- Header -->
           <div class="flex items-center justify-between px-5 py-3 border-b border-zinc-800 bg-zinc-800/40">
             <h2 class="text-sm font-semibold text-zinc-200">
-              Gerenciar: <span class="text-white">{{ managePl.name }}</span>
+              {{ t('manage.panel.title') }} <span class="text-white">{{ managePl.name }}</span>
             </h2>
             <button
               class="text-zinc-500 hover:text-white transition-colors text-xl leading-none px-1"
@@ -380,7 +382,7 @@ onMounted(async () => {
               :class="manageTab === tab ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-zinc-500 hover:text-zinc-300'"
               @click="switchManageTab(tab)"
             >
-              {{ tab === 'geral' ? '⚙ Geral' : '📂 Grupos' }}
+              {{ tab === 'geral' ? t('manage.tab.general') : t('manage.tab.groups') }}
             </button>
           </div>
 
@@ -388,7 +390,7 @@ onMounted(async () => {
           <div v-if="manageTab === 'geral'" class="p-5 space-y-5">
             <!-- Renomear -->
             <div class="space-y-2">
-              <label class="block text-xs font-medium text-zinc-400 uppercase tracking-wider">Renomear lista</label>
+              <label class="block text-xs font-medium text-zinc-400 uppercase tracking-wider">{{ t('manage.general.renameLabel') }}</label>
               <div class="flex gap-2">
                 <input
                   v-model="manageName"
@@ -396,25 +398,25 @@ onMounted(async () => {
                   class="flex-1 bg-zinc-800 border border-zinc-700 text-zinc-200 text-sm rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   @keyup.enter="saveManageName"
                 />
-                <AppButton :loading="manageRenameLoading" @click="saveManageName">Salvar</AppButton>
+                <AppButton :loading="manageRenameLoading" @click="saveManageName">{{ t('manage.action.save') }}</AppButton>
               </div>
             </div>
 
             <!-- Excluir -->
             <div class="pt-4 border-t border-zinc-800">
-              <p class="text-xs text-zinc-500 mb-3">Zona de perigo — esta ação não pode ser desfeita.</p>
-              <AppButton variant="danger" @click="confirmDelete(managePl)">Excluir Lista</AppButton>
+              <p class="text-xs text-zinc-500 mb-3">{{ t('manage.general.danger') }}</p>
+              <AppButton variant="danger" @click="confirmDelete(managePl)">{{ t('manage.general.deleteList') }}</AppButton>
             </div>
           </div>
 
           <!-- Tab: Grupos -->
           <div v-if="manageTab === 'grupos'" class="p-5 space-y-4">
             <!-- Loading -->
-            <div v-if="manageLoading" class="text-zinc-500 text-sm py-6 text-center">Carregando grupos...</div>
+            <div v-if="manageLoading" class="text-zinc-500 text-sm py-6 text-center">{{ t('manage.groups.loading') }}</div>
 
             <!-- Empty -->
             <div v-else-if="manageGroups.length === 0" class="text-zinc-600 text-sm py-6 text-center">
-              Nenhum grupo encontrado nesta lista.
+              {{ t('manage.groups.empty') }}
             </div>
 
             <!-- Acordeão de grupos -->
@@ -456,22 +458,22 @@ onMounted(async () => {
                   </div>
 
                   <!-- Badge contagem -->
-                  <span class="text-xs text-zinc-500 shrink-0 tabular-nums">{{ g.count }} canal(is)</span>
+                  <span class="text-xs text-zinc-500 shrink-0 tabular-nums">{{ g.count }} {{ t('manage.groups.channels') }}</span>
 
                   <!-- Indicador de drop ativo -->
                   <span v-if="dragOverGroup === g.name" class="text-xs text-indigo-400 shrink-0 animate-pulse">
-                    ↙ Soltar aqui
+                    {{ t('manage.groups.dropHere') }}
                   </span>
 
                   <!-- Ações do grupo -->
                   <div class="flex items-center gap-1.5 shrink-0 ml-1" @click.stop>
                     <template v-if="renamingGroup === g.name">
-                      <AppButton size="sm" @click="saveRenameGroup">Salvar</AppButton>
-                      <AppButton size="sm" variant="ghost" @click="renamingGroup = null">Cancelar</AppButton>
+                      <AppButton size="sm" @click="saveRenameGroup">{{ t('manage.action.save') }}</AppButton>
+                      <AppButton size="sm" variant="ghost" @click="renamingGroup = null">{{ t('manage.action.cancel') }}</AppButton>
                     </template>
                     <template v-else>
-                      <AppButton size="sm" variant="secondary" @click="startRenameGroup(g.name)">Renomear</AppButton>
-                      <AppButton size="sm" variant="danger" @click="deleteGroup(g.name)">Excluir</AppButton>
+                      <AppButton size="sm" variant="secondary" @click="startRenameGroup(g.name)">{{ t('manage.action.rename') }}</AppButton>
+                      <AppButton size="sm" variant="danger" @click="deleteGroup(g.name)">{{ t('manage.action.delete') }}</AppButton>
                     </template>
                   </div>
                 </div>
@@ -479,10 +481,10 @@ onMounted(async () => {
                 <!-- Lista de canais (expandida) -->
                 <div v-if="expandedGroups.includes(g.name)" class="border-t border-zinc-800/60 bg-zinc-950/50">
                   <div v-if="!groupChannelsCache[g.name]" class="px-4 py-2 text-xs text-zinc-600 italic">
-                    Carregando canais...
+                    {{ t('manage.groups.loadingChannels') }}
                   </div>
                   <div v-else-if="groupChannelsCache[g.name].length === 0" class="px-4 py-2 text-xs text-zinc-600 italic">
-                    Grupo sem canais.
+                    {{ t('manage.groups.emptyGroup') }}
                   </div>
                   <div
                     v-else
@@ -515,27 +517,27 @@ onMounted(async () => {
                 class="text-sm text-indigo-400 hover:text-indigo-300 transition-colors font-medium"
                 @click="showCreateGroup = true"
               >
-                + Criar novo grupo
+                {{ t('manage.groups.createNew') }}
               </button>
               <div v-else class="space-y-3">
-                <p class="text-xs text-zinc-400">Move todos os canais de um grupo existente para o novo nome de grupo.</p>
+                <p class="text-xs text-zinc-400">{{ t('manage.groups.createDesc') }}</p>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label class="block text-xs text-zinc-500 mb-1">Nome do novo grupo</label>
+                    <label class="block text-xs text-zinc-500 mb-1">{{ t('manage.groups.newName') }}</label>
                     <input
                       v-model="newGroupName"
                       type="text"
-                      placeholder="Ex: Esportes HD"
+                      :placeholder="t('manage.groups.newNamePlaceholder')"
                       class="w-full bg-zinc-800 border border-zinc-700 text-zinc-200 text-sm rounded px-3 py-2 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
                   </div>
                   <div>
-                    <label class="block text-xs text-zinc-500 mb-1">Mover canais do grupo</label>
+                    <label class="block text-xs text-zinc-500 mb-1">{{ t('manage.groups.moveFrom') }}</label>
                     <select
                       v-model="newGroupSource"
                       class="w-full bg-zinc-800 border border-zinc-700 text-zinc-200 text-sm rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     >
-                      <option value="" disabled>Selecione um grupo...</option>
+                      <option value="" disabled>{{ t('manage.groups.selectGroup') }}</option>
                       <option v-for="g in manageGroups" :key="g.name" :value="g.name">
                         {{ g.name }} ({{ g.count }})
                       </option>
@@ -544,10 +546,10 @@ onMounted(async () => {
                 </div>
                 <div class="flex gap-2">
                   <AppButton :disabled="!newGroupName.trim() || !newGroupSource" @click="submitCreateGroup">
-                    Criar Grupo
+                    {{ t('manage.groups.createButton') }}
                   </AppButton>
                   <AppButton variant="ghost" @click="showCreateGroup = false; newGroupName = ''; newGroupSource = ''">
-                    Cancelar
+                    {{ t('manage.action.cancel') }}
                   </AppButton>
                 </div>
               </div>
@@ -559,26 +561,26 @@ onMounted(async () => {
 
     <!-- ── Seção: Configurações ──────────────────────────────────── -->
     <section class="border border-zinc-800 rounded-lg p-5 space-y-5 bg-zinc-900/40">
-      <h2 class="text-base font-semibold text-white">Configurações</h2>
+      <h2 class="text-base font-semibold text-white">{{ t('manage.settings.title') }}</h2>
 
       <!-- Agrupamento -->
       <div class="flex items-center justify-between gap-4">
         <div>
-          <p class="text-sm text-zinc-200">Agrupamento Inteligente</p>
-          <p class="text-xs text-zinc-500 mt-0.5">Categoriza canais automaticamente por palavras-chave (ex: ESPN → Esportes). Desativado exibe lista plana.</p>
+          <p class="text-sm text-zinc-200">{{ t('manage.settings.grouping.title') }}</p>
+          <p class="text-xs text-zinc-500 mt-0.5">{{ t('manage.settings.grouping.desc') }}</p>
         </div>
-        <AppToggle v-model="settingsStore.groupingEnabled" @update:model-value="settingsStore.toggleGrouping" />
+        <AppToggle :model-value="settingsStore.groupingEnabled" @update:model-value="settingsStore.toggleGrouping" />
       </div>
 
       <!-- Proxy -->
       <div class="space-y-3">
         <div class="flex items-center justify-between gap-4">
           <div>
-            <p class="text-sm text-zinc-200">Proxy CORS</p>
-            <p class="text-xs text-zinc-500 mt-0.5">Roteia streams e downloads de lista pelo proxy para contornar restrições CORS.</p>
+          <p class="text-sm text-zinc-200">{{ t('manage.settings.proxy.title') }}</p>
+          <p class="text-xs text-zinc-500 mt-0.5">{{ t('manage.settings.proxy.desc') }}</p>
           </div>
           <AppToggle
-            v-model="settingsStore.proxyEnabled"
+            :model-value="settingsStore.proxyEnabled"
             :disabled="!settingsStore.proxyUrl"
             @update:model-value="settingsStore.toggleProxy"
           />
@@ -588,7 +590,7 @@ onMounted(async () => {
           <input
             v-model="proxyDraft"
             type="url"
-            placeholder="https://meu-proxy.exemplo.com/?url="
+            :placeholder="t('manage.settings.proxy.placeholder')"
             :disabled="settingsStore.proxyEnabled"
             class="flex-1 bg-zinc-800 border border-zinc-700 text-zinc-200 text-sm rounded px-3 py-2 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
           />
@@ -597,18 +599,18 @@ onMounted(async () => {
             :disabled="settingsStore.proxyEnabled"
             @click="saveProxy"
           >
-            Salvar
+            {{ t('manage.action.save') }}
           </AppButton>
         </div>
 
         <p v-if="settingsStore.proxyEnabled && settingsStore.proxyUrl" class="text-xs text-emerald-400">
-          ✓ Proxy ativo
+          {{ t('manage.settings.proxy.active') }}
         </p>
         <p v-else-if="settingsStore.proxyUrl && !settingsStore.proxyEnabled" class="text-xs text-zinc-500">
-          Proxy configurado, mas desativado.
+          {{ t('manage.settings.proxy.configured') }}
         </p>
         <p v-else-if="!settingsStore.proxyUrl" class="text-xs text-zinc-600">
-          Configure uma URL para habilitar o proxy.
+          {{ t('manage.settings.proxy.noUrl') }}
         </p>
       </div>
     </section>
@@ -616,7 +618,7 @@ onMounted(async () => {
     <!-- ── Modal de importação ──────────────────────────────────── -->
     <AppModal
       v-if="showImportModal"
-      title="Importar Lista M3U"
+      :title="t('manage.import.title')"
       @close="showImportModal = false"
     >
       <!-- Tabs -->
@@ -632,36 +634,36 @@ onMounted(async () => {
           "
           @click="importTab = tab"
         >
-          {{ tab === 'url' ? '🌐 Via URL' : '📁 Via Arquivo' }}
+          {{ tab === 'url' ? t('manage.import.tabUrl') : t('manage.import.tabFile') }}
         </button>
       </div>
 
       <!-- Nome -->
       <div class="space-y-3">
         <div>
-          <label class="block text-xs text-zinc-400 mb-1">Nome da lista *</label>
+          <label class="block text-xs text-zinc-400 mb-1">{{ t('manage.import.nameLabel') }}</label>
           <input
             v-model="importName"
             type="text"
-            placeholder="Ex: Minha TV"
+            :placeholder="t('manage.import.namePlaceholder')"
             class="w-full bg-zinc-800 border border-zinc-700 text-zinc-200 text-sm rounded px-3 py-2 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
         </div>
 
         <!-- URL -->
         <div v-if="importTab === 'url'">
-          <label class="block text-xs text-zinc-400 mb-1">URL do arquivo M3U *</label>
+          <label class="block text-xs text-zinc-400 mb-1">{{ t('manage.import.urlLabel') }}</label>
           <input
             v-model="importUrl"
             type="url"
-            placeholder="https://exemplo.com/lista.m3u"
+            :placeholder="t('manage.import.urlPlaceholder')"
             class="w-full bg-zinc-800 border border-zinc-700 text-zinc-200 text-sm rounded px-3 py-2 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
         </div>
 
         <!-- Arquivo -->
         <div v-else>
-          <label class="block text-xs text-zinc-400 mb-1">Arquivo .m3u / .m3u8 *</label>
+          <label class="block text-xs text-zinc-400 mb-1">{{ t('manage.import.fileLabel') }}</label>
           <input
             type="file"
             accept=".m3u,.m3u8,.txt"
@@ -675,9 +677,9 @@ onMounted(async () => {
       </div>
 
       <template #footer>
-        <AppButton variant="ghost" @click="showImportModal = false">Cancelar</AppButton>
+        <AppButton variant="ghost" @click="showImportModal = false">{{ t('manage.action.cancel') }}</AppButton>
         <AppButton :loading="playlistStore.isLoading" @click="submitImport">
-          Importar
+          {{ t('manage.import.submit') }}
         </AppButton>
       </template>
     </AppModal>

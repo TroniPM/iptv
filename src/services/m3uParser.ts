@@ -71,11 +71,11 @@ const SMART_GROUP_RULES: SmartGroupRule[] = [
 ]
 
 /**
- * Retorna a categoria inteligente para um canal com base no nome e tvg-name.
+ * Retorna a categoria inteligente para um canal com base no nome, tvg-name e group-title.
  * Retorna `null` quando nenhuma regra casar (usa o group-title original como fallback).
  */
 export function getSmartGroup(channel: Channel): string | null {
-  const haystack = `${channel.name} ${channel.tvgName}`.toLowerCase()
+  const haystack = `${channel.name} ${channel.tvgName} ${channel.group}`.toLowerCase()
   for (const rule of SMART_GROUP_RULES) {
     if (rule.patterns.some((p) => p.test(haystack))) return rule.group
   }

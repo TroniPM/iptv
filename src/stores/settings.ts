@@ -10,6 +10,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const proxyUrl = ref('')
   const lastChannelId = ref<number | null>(null)
   const lastPlaylistId = ref<number | null>(null)
+  const language = ref<string>('pt-BR')
 
   // ─── Actions ────────────────────────────────────────────────────────────────
 
@@ -21,6 +22,7 @@ export const useSettingsStore = defineStore('settings', () => {
       proxyUrl.value = record.proxyUrl ?? ''
       lastChannelId.value = record.lastChannelId ?? null
       lastPlaylistId.value = record.lastPlaylistId ?? null
+      language.value = record.language ?? 'pt-BR'
     }
   }
 
@@ -32,6 +34,7 @@ export const useSettingsStore = defineStore('settings', () => {
     if ('lastChannelId' in partial) lastChannelId.value = partial.lastChannelId!
     if ('lastPlaylistId' in partial)
       lastPlaylistId.value = partial.lastPlaylistId!
+    if ('language' in partial) language.value = partial.language!
 
     await db.settings.update(1, partial)
   }
@@ -44,15 +47,21 @@ export const useSettingsStore = defineStore('settings', () => {
     await save({ proxyEnabled: !proxyEnabled.value })
   }
 
+  async function setLanguage(lang: string) {
+    await save({ language: lang })
+  }
+
   return {
     groupingEnabled,
     proxyEnabled,
     proxyUrl,
     lastChannelId,
     lastPlaylistId,
+    language,
     load,
     save,
     toggleGrouping,
     toggleProxy,
+    setLanguage,
   }
 })

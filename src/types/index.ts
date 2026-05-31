@@ -52,6 +52,8 @@ export interface AppSettings {
   lastChannelId: number | null
   /** Última playlist selecionada (id) */
   lastPlaylistId: number | null
+  /** Código do idioma da interface (ex: 'pt-BR', 'en-US') */
+  language: string
 }
 
 // ─── Estado do Player ────────────────────────────────────────────────────────

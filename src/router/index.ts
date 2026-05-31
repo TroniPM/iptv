@@ -1,6 +1,6 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import PlayerView from '@/views/PlayerView.vue'
-import ManagementView from '@/views/ManagementView.vue'
+import SettingsView from '@/views/SettingsView.vue'
 
 const router = createRouter({
   // Hash history: funciona sem servidor (arquivos locais / extensões)
@@ -12,9 +12,9 @@ const router = createRouter({
       component: PlayerView,
     },
     {
-      path: '/manage',
-      name: 'manage',
-      component: ManagementView,
+      path: '/settings',
+      name: 'settings',
+      component: SettingsView,
     },
   ],
 })

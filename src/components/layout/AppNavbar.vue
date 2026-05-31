@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import { useRoute } from 'vue-router'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+import { useI18n } from '@/i18n'
 
 const route = useRoute()
 const menuOpen = ref(false)
+const { t } = useI18n()
 
-const navLinks = [
-  { to: '/', label: 'Player' },
-  { to: '/manage', label: 'Gerenciar Listas' },
-]
+const navLinks = computed(() => [
+  { to: '/',         label: t('nav.player')   },
+  { to: '/settings', label: t('nav.settings') },
+])
 </script>
 
 <template>

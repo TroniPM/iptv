@@ -4,10 +4,12 @@ import type Hls from 'hls.js'
 import { usePlaylistStore } from '@/stores/playlist'
 import { useSettingsStore } from '@/stores/settings'
 import { attachStream, destroyStream } from '@/services/stream'
+import { useI18n } from '@/i18n'
 import type { Channel, ChannelGroup, HlsStats } from '@/types'
 
 const playlistStore = usePlaylistStore()
 const settingsStore = useSettingsStore()
+const { t, tGroup } = useI18n()
 
 // ─── Player ──────────────────────────────────────────────────────────────────
 const videoEl = ref<HTMLVideoElement | null>(null)
@@ -80,7 +82,7 @@ function playChannel(channel: Channel) {
     hlsRef.value = hls
     startStatsPolling()
   } catch {
-    streamError.value = 'Falha ao inicializar o stream.'
+    streamError.value = t('player.stream.error.init')
   }
 }
 
@@ -89,7 +91,7 @@ function onVideoCanPlay() {
 }
 function onVideoError() {
   isLoading.value = false
-  streamError.value = 'Erro ao reproduzir o stream. Verifique a URL ou configure um proxy.'
+  streamError.value = t('player.stream.error.playback')
 }
 
 // ─── Lista lateral ────────────────────────────────────────────────────────────
@@ -179,7 +181,7 @@ onBeforeUnmount(() => {
           class="absolute top-3 left-3 z-10 bg-black/70 hover:bg-black/90 text-zinc-300 hover:text-white text-xs font-mono px-2.5 py-1 rounded-md transition-colors select-none"
           @click="statsVisible = !statsVisible"
         >
-          {{ statsVisible ? '✕ Stats' : '📊 Stats' }}
+          {{ statsVisible ? t('player.stats.hide') : t('player.stats.show') }}
         </button>
 
         <!-- Stats: painel "estatísticas para nerds" -->
@@ -188,28 +190,28 @@ onBeforeUnmount(() => {
           class="absolute top-11 left-3 z-10 bg-black/85 border border-zinc-700/60 rounded-md text-xs font-mono p-3 space-y-1.5 min-w-48"
         >
           <p class="text-zinc-500 font-sans font-semibold uppercase tracking-wider text-[10px] mb-1.5 pb-1.5 border-b border-zinc-700/60">
-            Estatísticas
+            {{ t('player.stats.title') }}
           </p>
           <div class="flex justify-between gap-6">
-            <span class="text-zinc-500">Bitrate</span>
+            <span class="text-zinc-500">{{ t('player.stats.bitrate') }}</span>
             <span class="text-green-400">{{ stats.bitrate > 0 ? stats.bitrate + ' kbps' : '--' }}</span>
           </div>
           <div class="flex justify-between gap-6">
-            <span class="text-zinc-500">Resolução</span>
+            <span class="text-zinc-500">{{ t('player.stats.resolution') }}</span>
             <span class="text-green-400">{{ stats.resolution }}</span>
           </div>
           <div class="flex justify-between gap-6">
-            <span class="text-zinc-500">Buffer</span>
+            <span class="text-zinc-500">{{ t('player.stats.buffer') }}</span>
             <span class="text-green-400">{{ stats.bufferLength }}s</span>
           </div>
           <div class="flex justify-between gap-6">
-            <span class="text-zinc-500">Frames perdidos</span>
+            <span class="text-zinc-500">{{ t('player.stats.dropped') }}</span>
             <span :class="stats.droppedFrames > 0 ? 'text-yellow-400' : 'text-green-400'">
               {{ stats.droppedFrames }}
             </span>
           </div>
           <div v-if="stats.level >= 0" class="flex justify-between gap-6">
-            <span class="text-zinc-500">Nível Q.</span>
+            <span class="text-zinc-500">{{ t('player.stats.quality') }}</span>
             <span class="text-green-400">{{ stats.level }}</span>
           </div>
         </div>
@@ -223,7 +225,7 @@ onBeforeUnmount(() => {
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
               d="M15 10l4.553-2.069A1 1 0 0121 8.869v6.262a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" />
           </svg>
-          <p class="text-sm">Selecione um canal para reproduzir</p>
+          <p class="text-sm">{{ t('player.empty') }}</p>
         </div>
 
         <!-- Overlay: carregando -->
@@ -291,7 +293,7 @@ onBeforeUnmount(() => {
       <!-- Toggle sidebar -->
       <button
         class="h-10 flex items-center justify-center text-zinc-400 hover:text-white border-b border-zinc-800 shrink-0"
-        :aria-label="sidebarOpen ? 'Fechar lista' : 'Abrir lista'"
+        :aria-label="sidebarOpen ? t('player.sidebar.close') : t('player.sidebar.open')"
         @click="sidebarOpen = !sidebarOpen"
       >
         <svg class="w-4 h-4 transition-transform" :class="sidebarOpen ? 'rotate-0' : 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -311,7 +313,7 @@ onBeforeUnmount(() => {
             }"
           >
             <option value="" disabled :selected="!playlistStore.activePlaylist">
-              Selecione uma lista
+              {{ t('player.sidebar.selectPlaylist') }}
             </option>
             <option v-for="pl in playlistStore.playlists" :key="pl.id" :value="pl.id">
               {{ pl.name }}
@@ -324,7 +326,7 @@ onBeforeUnmount(() => {
           <input
             v-model="playlistStore.searchQuery"
             type="search"
-            placeholder="Buscar canal..."
+            :placeholder="t('player.sidebar.search')"
             class="w-full bg-zinc-800 border border-zinc-700 text-zinc-200 text-sm rounded px-2 py-1.5 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
         </div>
@@ -337,19 +339,19 @@ onBeforeUnmount(() => {
           <button
             class="text-xs text-zinc-500 hover:text-zinc-200 transition-colors"
             @click="expandAll"
-          >Expandir todos</button>
+          >{{ t('player.sidebar.expandAll') }}</button>
           <span class="text-zinc-700 select-none">·</span>
           <button
             class="text-xs text-zinc-500 hover:text-zinc-200 transition-colors"
             @click="collapseAll"
-          >Recolher todos</button>
+          >{{ t('player.sidebar.collapseAll') }}</button>
         </div>
 
         <!-- Lista com agrupamento -->
         <div class="flex-1 overflow-y-auto">
           <!-- Sem playlist -->
           <p v-if="!playlistStore.activePlaylist" class="p-4 text-xs text-zinc-600 text-center">
-            Nenhuma lista selecionada.
+            {{ t('player.sidebar.noPlaylist') }}
           </p>
 
           <!-- Agrupamento ativo -->
@@ -370,7 +372,7 @@ onBeforeUnmount(() => {
                 >
                   <path d="M7.293 4.707a1 1 0 011.414 0L14 10l-5.293 5.293a1 1 0 01-1.414-1.414L11.586 10 6.293 5.121a1 1 0 010-1.414z"/>
                 </svg>
-                <span class="truncate flex-1 text-left">{{ group.name }}</span>
+                <span class="truncate flex-1 text-left">{{ tGroup(group.name) }}</span>
                 <span class="text-zinc-700 font-normal normal-case tracking-normal">{{ group.channels.length }}</span>
               </button>
 
