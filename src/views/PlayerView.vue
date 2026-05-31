@@ -89,6 +89,22 @@ function qualityLabel(lvl: QualityLevel, index: number): string {
   return `${res}${kbps}`
 }
 
+// ─── Picture-in-Picture ─────────────────────────────────────────────────────
+const isPiP = ref(false)
+const pipSupported = typeof document !== 'undefined' && !!document.pictureInPictureEnabled
+
+function onEnterPiP() { isPiP.value = true }
+function onLeavePiP() { isPiP.value = false }
+
+async function togglePiP() {
+  if (!videoEl.value) return
+  if (document.pictureInPictureElement) {
+    await document.exitPictureInPicture()
+  } else {
+    await videoEl.value.requestPictureInPicture()
+  }
+}
+
 // ─── EPG ─────────────────────────────────────────────────────────────────────
 const epgPanelOpen = ref(false)
 const currentNowProgram = ref<EpgProgram | null>(null)
@@ -299,8 +315,23 @@ onMounted(async () => {
   }
 })
 
+watch(videoEl, (el, oldEl) => {
+  if (oldEl) {
+    oldEl.removeEventListener('enterpictureinpicture', onEnterPiP)
+    oldEl.removeEventListener('leavepictureinpicture', onLeavePiP)
+  }
+  if (el) {
+    el.addEventListener('enterpictureinpicture', onEnterPiP)
+    el.addEventListener('leavepictureinpicture', onLeavePiP)
+  }
+})
+
 onBeforeUnmount(() => {
   stopStatsPolling()
+  if (videoEl.value) {
+    videoEl.value.removeEventListener('enterpictureinpicture', onEnterPiP)
+    videoEl.value.removeEventListener('leavepictureinpicture', onLeavePiP)
+  }
   destroyStream(videoEl.value ?? undefined)
 })
 
@@ -441,6 +472,18 @@ onBeforeUnmount(() => {
             @click="epgPanelOpen = !epgPanelOpen"
           >
             {{ t('player.epg.button') }}
+          </button>
+          <!-- Botão PiP -->
+          <button
+            v-if="pipSupported"
+            class="text-xs px-2 py-0.5 rounded transition-colors"
+            :class="isPiP
+              ? 'bg-indigo-600 text-white'
+              : 'text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800'"
+            :title="isPiP ? t('player.pip.exit') : t('player.pip.enter')"
+            @click="togglePiP"
+          >
+            {{ isPiP ? t('player.pip.exit') : t('player.pip.enter') }}
           </button>
           <span class="text-xs text-zinc-600 truncate">{{ playlistStore.selectedChannel.group }}</span>
         </div>

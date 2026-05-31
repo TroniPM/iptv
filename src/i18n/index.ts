@@ -83,6 +83,10 @@ const UI_TRANSLATIONS: Record<Locale, Record<string, string>> = {
     'player.quality.label':          'Qualidade',
     'player.quality.auto':           'Auto',
 
+    // Player — PiP
+    'player.pip.enter':              'PiP',
+    'player.pip.exit':               '✕ PiP',
+
     // Player — EPG
     'player.epg.button':             'EPG',
     'player.epg.noData':             'Sem dados de programação para este canal.',
@@ -230,6 +234,10 @@ const UI_TRANSLATIONS: Record<Locale, Record<string, string>> = {
     // Player — quality
     'player.quality.label':          'Quality',
     'player.quality.auto':           'Auto',
+
+    // Player — PiP
+    'player.pip.enter':              'PiP',
+    'player.pip.exit':               '✕ PiP',
 
     // Player — EPG
     'player.epg.button':             'EPG',
