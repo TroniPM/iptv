@@ -50,16 +50,23 @@ let hlsInstance: Hls | null = null
  * Inicializa o stream em um elemento <video>.
  * Gerencia automaticamente a instância do hls.js.
  *
- * @param onError  Callback chamado quando ocorre um erro fatal no stream
+ * @param useProxy          Se o proxy CORS deve ser aplicado (deve refletir o flag proxyEnabled)
+ * @param proxyUrl          URL-base do proxy
+ * @param onError           Callback chamado quando ocorre um erro fatal no stream
+ * @param onLevelsReady     Callback chamado quando os níveis de qualidade HLS estão disponíveis
+ * @param onAutoplayBlocked Callback chamado quando o autoplay é bloqueado pelo browser
  */
 export function attachStream(
   video: HTMLVideoElement,
   url: string,
+  useProxy = false,
   proxyUrl = '',
   onError?: (message: string) => void,
+  onLevelsReady?: (levels: Array<{ height?: number; width?: number; bitrate: number }>) => void,
+  onAutoplayBlocked?: () => void,
 ): Hls | null {
   const normalizedUrl = normalizeStreamUrl(url)
-  const finalUrl = prepareUrl(normalizedUrl, Boolean(proxyUrl), proxyUrl)
+  const finalUrl = prepareUrl(normalizedUrl, useProxy, proxyUrl)
   const type = detectStreamType(normalizedUrl)
 
   destroyStream()
@@ -73,8 +80,11 @@ export function attachStream(
     hlsInstance.attachMedia(video)
     hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
       video.play().catch(() => {
-        // Autoplay pode ser bloqueado pelo browser; ignorar silenciosamente
+        onAutoplayBlocked?.()
       })
+      if (onLevelsReady) {
+        onLevelsReady(hlsInstance!.levels)
+      }
     })
     hlsInstance.on(Hls.Events.ERROR, (_event, data) => {
       if (data.fatal) {
@@ -85,7 +95,7 @@ export function attachStream(
   } else {
     // Fallback para vídeo nativo (MPEG-TS via MSE, MP4, etc.)
     video.src = finalUrl
-    video.play().catch(() => {})
+    video.play().catch(() => { onAutoplayBlocked?.() })
     return null
   }
 }

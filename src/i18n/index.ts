@@ -42,8 +42,10 @@ const UI_TRANSLATIONS: Record<Locale, Record<string, string>> = {
     'settings.lists.title':          'Minhas Listas',
 
     // Player — erros de stream
-    'player.stream.error.init':      'Falha ao inicializar o stream.',
-    'player.stream.error.playback':  'Erro ao reproduzir o stream. Verifique a URL ou configure um proxy.',
+    'player.stream.error.init':             'Falha ao inicializar o stream.',
+    'player.stream.error.playback':         'Erro ao reproduzir o stream. Verifique a URL ou configure um proxy.',
+    'player.stream.error.invalidUrl':       'URL do canal inválida ou com protocolo não suportado.',
+    'player.stream.error.autoplayBlocked':  'Autoplay bloqueado pelo navegador. Clique em reproduzir no player.',
 
     // Player — painel de estatísticas
     'player.stats.show':             '📊 Stats',
@@ -65,8 +67,43 @@ const UI_TRANSLATIONS: Record<Locale, Record<string, string>> = {
     'player.sidebar.collapseAll':    'Recolher todos',
     'player.sidebar.noPlaylist':     'Nenhuma lista selecionada.',
 
-    // Gerenciar listas — cabeçalho e tabela
-    'manage.title':                  'Minhas Listas M3U',
+    // Player — abas da sidebar
+    'player.tabs.channels':          'Canais',
+    'player.tabs.favorites':         'Favoritos',
+    'player.tabs.history':           'Recentes',
+
+    // Player — favoritos
+    'player.favorites.empty':        'Nenhum favorito ainda.\nClique no ♡ ao lado de um canal.',
+
+    // Player — histórico
+    'player.history.empty':          'Nenhum canal assistido ainda.',
+    'player.history.clear':          'Limpar histórico',
+
+    // Player — qualidade
+    'player.quality.label':          'Qualidade',
+    'player.quality.auto':           'Auto',
+
+    // Player — EPG
+    'player.epg.button':             'EPG',
+    'player.epg.noData':             'Sem dados de programação para este canal.',
+    'player.epg.now':                'Agora',
+    'player.epg.schedule':           'Programação do dia',
+    'player.epg.noSources':          'Nenhuma fonte EPG configurada.',
+
+    // Configurações — EPG
+    'settings.epg.title':            'EPG (Guia de Programação)',
+    'settings.epg.description':      'Adicione fontes XMLTV para exibir a grade de programação dos canais.',
+    'settings.epg.addSource':        'Adicionar Fonte',
+    'settings.epg.sourceName':       'Nome da fonte',
+    'settings.epg.sourceUrl':        'URL do arquivo XMLTV',
+    'settings.epg.refresh':          'Atualizar',
+    'settings.epg.delete':           'Excluir',
+    'settings.epg.lastFetched':      'Última atualização:',
+    'settings.epg.never':            'Nunca',
+    'settings.epg.fetching':         'Buscando...',
+    'settings.epg.noSources':        'Nenhuma fonte EPG adicionada.',
+    'settings.epg.namePlaceholder':  'Ex: EPG Brasil',
+    'settings.epg.urlPlaceholder':   'https://exemplo.com/epg.xml',
     'manage.import.button':          '+ Importar Lista',
     'manage.empty.line1':            'Nenhuma lista importada.',
     'manage.empty.line2':            'Clique em "Importar Lista" para começar.',
@@ -153,8 +190,10 @@ const UI_TRANSLATIONS: Record<Locale, Record<string, string>> = {
     'settings.lists.title':          'My Playlists',
 
     // Player — stream errors
-    'player.stream.error.init':      'Failed to initialize the stream.',
-    'player.stream.error.playback':  'Stream playback error. Check the URL or configure a proxy.',
+    'player.stream.error.init':             'Failed to initialize the stream.',
+    'player.stream.error.playback':         'Stream playback error. Check the URL or configure a proxy.',
+    'player.stream.error.invalidUrl':       'Invalid channel URL or unsupported protocol.',
+    'player.stream.error.autoplayBlocked':  'Autoplay blocked by the browser. Click play in the player.',
 
     // Player — stats panel
     'player.stats.show':             '📊 Stats',
@@ -175,6 +214,44 @@ const UI_TRANSLATIONS: Record<Locale, Record<string, string>> = {
     'player.sidebar.expandAll':      'Expand all',
     'player.sidebar.collapseAll':    'Collapse all',
     'player.sidebar.noPlaylist':     'No playlist selected.',
+
+    // Player — sidebar tabs
+    'player.tabs.channels':          'Channels',
+    'player.tabs.favorites':         'Favorites',
+    'player.tabs.history':           'Recent',
+
+    // Player — favorites
+    'player.favorites.empty':        'No favorites yet.\nClick ♡ next to a channel.',
+
+    // Player — history
+    'player.history.empty':          'No channels watched yet.',
+    'player.history.clear':          'Clear history',
+
+    // Player — quality
+    'player.quality.label':          'Quality',
+    'player.quality.auto':           'Auto',
+
+    // Player — EPG
+    'player.epg.button':             'EPG',
+    'player.epg.noData':             'No program data for this channel.',
+    'player.epg.now':                'Now',
+    'player.epg.schedule':           "Today's schedule",
+    'player.epg.noSources':          'No EPG source configured.',
+
+    // Settings — EPG
+    'settings.epg.title':            'EPG (Program Guide)',
+    'settings.epg.description':      'Add XMLTV sources to display the program schedule for channels.',
+    'settings.epg.addSource':        'Add Source',
+    'settings.epg.sourceName':       'Source name',
+    'settings.epg.sourceUrl':        'XMLTV file URL',
+    'settings.epg.refresh':          'Refresh',
+    'settings.epg.delete':           'Delete',
+    'settings.epg.lastFetched':      'Last updated:',
+    'settings.epg.never':            'Never',
+    'settings.epg.fetching':         'Fetching...',
+    'settings.epg.noSources':        'No EPG source added.',
+    'settings.epg.namePlaceholder':  'E.g.: US EPG',
+    'settings.epg.urlPlaceholder':   'https://example.com/epg.xml',
 
     // Manage playlists — header & table
     'manage.title':                  'My M3U Playlists',

@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { usePlaylistStore } from '@/stores/playlist'
 import { useSettingsStore } from '@/stores/settings'
+import { useEpgStore } from '@/stores/epg'
 import { useI18n, LOCALES } from '@/i18n'
 import AppButton from '@/components/ui/AppButton.vue'
 import AppModal from '@/components/ui/AppModal.vue'
@@ -11,6 +12,7 @@ import type { Playlist, Channel } from '@/types'
 
 const playlistStore = usePlaylistStore()
 const settingsStore = useSettingsStore()
+const epgStore = useEpgStore()
 const { t, tParam, locale } = useI18n()
 
 // ─── Idioma ───────────────────────────────────────────────────────────────────
@@ -281,10 +283,42 @@ async function onGroupDrop(e: DragEvent, targetGroup: string) {
   await refreshManageGroups(managePl.value.id!)
 }
 
+// ─── EPG ─────────────────────────────────────────────────────────────────────
+const epgFormName = ref('')
+const epgFormUrl = ref('')
+const epgFormError = ref<string | null>(null)
+const refreshingSourceId = ref<number | null>(null)
+
+async function addEpgSource() {
+  epgFormError.value = null
+  if (!epgFormName.value.trim()) { epgFormError.value = 'Informe um nome.'; return }
+  if (!epgFormUrl.value.trim()) { epgFormError.value = 'Informe a URL.'; return }
+  await epgStore.addSource(epgFormName.value.trim(), epgFormUrl.value.trim())
+  epgFormName.value = ''
+  epgFormUrl.value = ''
+}
+
+async function refreshEpgSource(source: import('@/types').EpgSource) {
+  refreshingSourceId.value = source.id!
+  try {
+    await epgStore.fetchEpg(source, settingsStore.proxyUrl, settingsStore.proxyEnabled)
+  } catch {
+    // error já em epgStore.error
+  } finally {
+    refreshingSourceId.value = null
+  }
+}
+
+function formatEpgDate(date: Date | null): string {
+  if (!date) return t('settings.epg.never')
+  return new Date(date).toLocaleString()
+}
+
 // ─── Init ─────────────────────────────────────────────────────────────────────
 onMounted(async () => {
   await settingsStore.load()
   await playlistStore.loadPlaylists()
+  await epgStore.loadSources()
   proxyDraft.value = settingsStore.proxyUrl
 })
 </script>
@@ -396,6 +430,73 @@ onMounted(async () => {
             <p v-else-if="!settingsStore.proxyUrl" class="text-xs text-zinc-600">
               {{ t('manage.settings.proxy.noUrl') }}
             </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Seção: EPG ────────────────────────────────────────────── -->
+      <section class="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+        <div class="px-5 py-4 border-b border-zinc-800">
+          <h2 class="text-sm font-semibold text-zinc-200">{{ t('settings.epg.title') }}</h2>
+          <p class="text-xs text-zinc-500 mt-1">{{ t('settings.epg.description') }}</p>
+        </div>
+        <div class="p-5 space-y-5">
+          <!-- Formulário de adição -->
+          <div class="grid grid-cols-1 sm:grid-cols-[1fr_2fr_auto] gap-2 items-end">
+            <div>
+              <label class="block text-xs text-zinc-400 mb-1">{{ t('settings.epg.sourceName') }}</label>
+              <input
+                v-model="epgFormName"
+                type="text"
+                :placeholder="t('settings.epg.namePlaceholder')"
+                class="w-full bg-zinc-800 border border-zinc-700 text-zinc-200 text-sm rounded px-3 py-1.5 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+            <div>
+              <label class="block text-xs text-zinc-400 mb-1">{{ t('settings.epg.sourceUrl') }}</label>
+              <input
+                v-model="epgFormUrl"
+                type="url"
+                :placeholder="t('settings.epg.urlPlaceholder')"
+                class="w-full bg-zinc-800 border border-zinc-700 text-zinc-200 text-sm rounded px-3 py-1.5 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+            <AppButton size="sm" @click="addEpgSource">{{ t('settings.epg.addSource') }}</AppButton>
+          </div>
+          <p v-if="epgFormError" class="text-xs text-red-400">{{ epgFormError }}</p>
+
+          <!-- Lista de fontes -->
+          <div v-if="epgStore.sources.length === 0" class="text-xs text-zinc-600 text-center py-2">
+            {{ t('settings.epg.noSources') }}
+          </div>
+          <div v-else class="space-y-2">
+            <div
+              v-for="source in epgStore.sources"
+              :key="source.id"
+              class="flex items-center gap-3 bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3"
+            >
+              <div class="flex-1 min-w-0">
+                <p class="text-sm text-zinc-200 font-medium truncate">{{ source.name }}</p>
+                <p class="text-xs text-zinc-500 truncate">{{ source.url }}</p>
+                <p class="text-xs text-zinc-600 mt-0.5">
+                  {{ t('settings.epg.lastFetched') }} {{ formatEpgDate(source.lastFetched) }}
+                </p>
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
+                <AppButton
+                  size="sm"
+                  variant="secondary"
+                  :disabled="refreshingSourceId === source.id || epgStore.isLoading"
+                  @click="refreshEpgSource(source)"
+                >
+                  {{ refreshingSourceId === source.id ? t('settings.epg.fetching') : t('settings.epg.refresh') }}
+                </AppButton>
+                <AppButton size="sm" variant="danger" @click="epgStore.deleteSource(source.id!)">
+                  {{ t('settings.epg.delete') }}
+                </AppButton>
+              </div>
+            </div>
+            <p v-if="epgStore.error" class="text-xs text-red-400">{{ epgStore.error }}</p>
           </div>
         </div>
       </section>

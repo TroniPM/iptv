@@ -1,20 +1,27 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import type Hls from 'hls.js'
 import { usePlaylistStore } from '@/stores/playlist'
 import { useSettingsStore } from '@/stores/settings'
-import { attachStream, destroyStream } from '@/services/stream'
+import { useFavoritesStore } from '@/stores/favorites'
+import { useHistoryStore } from '@/stores/history'
+import { useEpgStore } from '@/stores/epg'
+import { attachStream, destroyStream, isValidStreamUrl } from '@/services/stream'
 import { useI18n } from '@/i18n'
-import type { Channel, ChannelGroup, HlsStats } from '@/types'
+import type { Channel, ChannelGroup, HlsStats, EpgProgram } from '@/types'
 
 const playlistStore = usePlaylistStore()
 const settingsStore = useSettingsStore()
+const favoritesStore = useFavoritesStore()
+const historyStore = useHistoryStore()
+const epgStore = useEpgStore()
 const { t, tGroup } = useI18n()
 
 // ─── Player ──────────────────────────────────────────────────────────────────
 const videoEl = ref<HTMLVideoElement | null>(null)
 const isLoading = ref(false)
 const streamError = ref<string | null>(null)
+
 // ─── Stats para nerds ─────────────────────────────────────────────────────────
 const hlsRef = ref<Hls | null>(null)
 const statsVisible = ref(false)
@@ -32,18 +39,15 @@ function startStatsPolling() {
   statsInterval = setInterval(() => {
     if (!videoEl.value) return
 
-    // Buffer restante à frente do playhead
     const buf = videoEl.value.buffered
     stats.value.bufferLength =
       buf.length > 0
         ? parseFloat((buf.end(buf.length - 1) - videoEl.value.currentTime).toFixed(1))
         : 0
 
-    // Frames perdidos (WebAPI)
     const q = videoEl.value.getVideoPlaybackQuality()
     stats.value.droppedFrames = q.droppedVideoFrames
 
-    // Bitrate e resolução do nível HLS atual
     if (hlsRef.value && hlsRef.value.currentLevel >= 0) {
       const lvl = hlsRef.value.levels[hlsRef.value.currentLevel]
       if (lvl) {
@@ -62,21 +66,144 @@ function stopStatsPolling() {
     statsInterval = null
   }
 }
+
+// ─── Seleção de qualidade ─────────────────────────────────────────────────────
+interface QualityLevel { height?: number; width?: number; bitrate: number }
+const availableLevels = ref<QualityLevel[]>([])
+const selectedQuality = ref<number>(-1)
+
+function onLevelsReady(levels: QualityLevel[]) {
+  availableLevels.value = levels
+}
+
+function applyQuality(levelIndex: number) {
+  selectedQuality.value = levelIndex
+  if (hlsRef.value) {
+    hlsRef.value.currentLevel = levelIndex
+  }
+}
+
+function qualityLabel(lvl: QualityLevel, index: number): string {
+  const res = lvl.height ? `${lvl.height}p` : `L${index}`
+  const kbps = lvl.bitrate ? ` · ${Math.round(lvl.bitrate / 1000)}kbps` : ''
+  return `${res}${kbps}`
+}
+
+// ─── EPG ─────────────────────────────────────────────────────────────────────
+const epgPanelOpen = ref(false)
+const currentNowProgram = ref<EpgProgram | null>(null)
+const todayPrograms = ref<EpgProgram[]>([])
+const currentProgramIds = ref<Map<string, EpgProgram>>(new Map())
+
+async function loadCurrentProgram(tvgId: string) {
+  if (!tvgId) {
+    currentNowProgram.value = null
+    return
+  }
+  currentNowProgram.value = await epgStore.getCurrentProgram(tvgId)
+}
+
+async function loadTodayPrograms(tvgId: string) {
+  if (!tvgId) {
+    todayPrograms.value = []
+    return
+  }
+  todayPrograms.value = await epgStore.getProgramsForChannel(tvgId, new Date())
+}
+
+async function refreshCurrentPrograms() {
+  const map = new Map<string, EpgProgram>()
+  const now = new Date()
+  const ids = await epgStore.getEpgChannelIds()
+  // Buscar apenas canais que estão na lista atual e têm EPG
+  const channels = playlistStore.channels.filter(
+    (ch: Channel) => ch.tvgId && ids.has(ch.tvgId),
+  )
+  await Promise.all(
+    channels.map(async (ch: Channel) => {
+      const prog = await epgStore.getCurrentProgram(ch.tvgId)
+      if (prog) map.set(ch.tvgId, prog)
+    }),
+  )
+  // suppress unused warning for 'now' - used implicitly via getCurrentProgram
+  void now
+  currentProgramIds.value = map
+}
+
+watch(
+  () => playlistStore.selectedChannel,
+  async (ch) => {
+    if (!ch) {
+      currentNowProgram.value = null
+      todayPrograms.value = []
+      return
+    }
+    await loadCurrentProgram(ch.tvgId)
+    if (epgPanelOpen.value) {
+      await loadTodayPrograms(ch.tvgId)
+    }
+  },
+)
+
+watch(epgPanelOpen, async (open) => {
+  if (open && playlistStore.selectedChannel) {
+    await loadTodayPrograms(playlistStore.selectedChannel.tvgId)
+  }
+})
+
+function formatTime(date: Date): string {
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
+
+function isNowProgram(prog: EpgProgram): boolean {
+  const now = new Date()
+  return prog.start <= now && prog.stop > now
+}
+
+function relativeTime(date: Date): string {
+  const diff = Math.floor((Date.now() - date.getTime()) / 1000)
+  if (diff < 60) return 'agora'
+  if (diff < 3600) return `${Math.floor(diff / 60)}min`
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h`
+  return `${Math.floor(diff / 86400)}d`
+}
+
+// ─── Reprodução ──────────────────────────────────────────────────────────────
 function playChannel(channel: Channel) {
   if (!videoEl.value) return
   streamError.value = null
   isLoading.value = true
   stopStatsPolling()
+  availableLevels.value = []
+  selectedQuality.value = -1
   stats.value = { bitrate: 0, resolution: '-', bufferLength: 0, droppedFrames: 0, level: -1 }
   playlistStore.selectChannel(channel)
+
+  // Adicionar ao histórico
+  if (playlistStore.activePlaylist?.id) {
+    historyStore.addEntry(channel, playlistStore.activePlaylist.id)
+  }
+
+  if (!isValidStreamUrl(channel.url)) {
+    isLoading.value = false
+    streamError.value = t('player.stream.error.invalidUrl')
+    return
+  }
+
   try {
     const hls = attachStream(
       videoEl.value,
       channel.url,
-      settingsStore.proxyEnabled ? settingsStore.proxyUrl : '',
+      settingsStore.proxyEnabled,
+      settingsStore.proxyUrl,
       (msg) => {
         isLoading.value = false
         streamError.value = msg
+      },
+      onLevelsReady,
+      () => {
+        isLoading.value = false
+        streamError.value = t('player.stream.error.autoplayBlocked')
       },
     )
     hlsRef.value = hls
@@ -94,9 +221,17 @@ function onVideoError() {
   streamError.value = t('player.stream.error.playback')
 }
 
+// ─── Sidebar — abas ───────────────────────────────────────────────────────────
+type SidebarTab = 'channels' | 'favorites' | 'history'
+const activeTab = ref<SidebarTab>('channels')
+
+const favoriteChannels = computed(() =>
+  favoritesStore.getFavoriteChannels(playlistStore.channels),
+)
+
 // ─── Lista lateral ────────────────────────────────────────────────────────────
 const sidebarOpen = ref(true)
-const sidebarWidth = ref(288) // px — equivale a w-72
+const sidebarWidth = ref(288)
 const isResizing = ref(false)
 const expandedGroups = ref<Set<string>>(new Set())
 
@@ -106,7 +241,7 @@ function toggleGroup(name: string) {
 }
 
 function expandAll() {
-  playlistStore.groupedChannels.forEach(g => expandedGroups.value.add(g.name))
+  playlistStore.groupedChannels.forEach((g: ChannelGroup) => expandedGroups.value.add(g.name))
 }
 
 function collapseAll() {
@@ -119,7 +254,7 @@ function startResize(e: MouseEvent) {
   const startWidth = sidebarWidth.value
 
   function onMove(ev: MouseEvent) {
-    const delta = startX - ev.clientX // arrastar à esquerda = aumentar
+    const delta = startX - ev.clientX
     sidebarWidth.value = Math.min(640, Math.max(160, startWidth + delta))
   }
 
@@ -133,7 +268,6 @@ function startResize(e: MouseEvent) {
   document.addEventListener('mouseup', onUp)
 }
 
-// Expande todos os grupos ao carregar
 watch(
   () => playlistStore.groupedChannels,
   (groups: ChannelGroup[]) => {
@@ -142,10 +276,21 @@ watch(
   { immediate: true },
 )
 
+// Atualiza programas EPG "agora" ao carregar canais
+watch(
+  () => playlistStore.channels,
+  async () => {
+    await refreshCurrentPrograms()
+  },
+)
+
 // ─── Lifecycle ────────────────────────────────────────────────────────────────
 onMounted(async () => {
   await settingsStore.load()
   await playlistStore.loadPlaylists()
+  await favoritesStore.loadFavorites()
+  await historyStore.loadHistory()
+  await epgStore.loadSources()
   if (settingsStore.lastPlaylistId) {
     const pl = playlistStore.playlists.find(
       (p: { id?: number }) => p.id === settingsStore.lastPlaylistId,
@@ -158,6 +303,8 @@ onBeforeUnmount(() => {
   stopStatsPolling()
   destroyStream(videoEl.value ?? undefined)
 })
+
+
 </script>
 
 <template>
@@ -184,7 +331,7 @@ onBeforeUnmount(() => {
           {{ statsVisible ? t('player.stats.hide') : t('player.stats.show') }}
         </button>
 
-        <!-- Stats: painel "estatísticas para nerds" -->
+        <!-- Stats: painel -->
         <div
           v-if="statsVisible && playlistStore.selectedChannel"
           class="absolute top-11 left-3 z-10 bg-black/85 border border-zinc-700/60 rounded-md text-xs font-mono p-3 space-y-1.5 min-w-48"
@@ -213,6 +360,23 @@ onBeforeUnmount(() => {
           <div v-if="stats.level >= 0" class="flex justify-between gap-6">
             <span class="text-zinc-500">{{ t('player.stats.quality') }}</span>
             <span class="text-green-400">{{ stats.level }}</span>
+          </div>
+
+          <!-- Seletor de qualidade inline nos stats -->
+          <div v-if="availableLevels.length > 1" class="pt-1.5 border-t border-zinc-700/60">
+            <p class="text-zinc-500 text-[10px] uppercase tracking-wider mb-1">{{ t('player.quality.label') }}</p>
+            <select
+              :value="selectedQuality"
+              class="w-full bg-zinc-800 border border-zinc-700 text-zinc-200 text-xs rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              @change="applyQuality(Number(($event.target as HTMLSelectElement).value))"
+            >
+              <option :value="-1">{{ t('player.quality.auto') }}</option>
+              <option
+                v-for="(lvl, i) in availableLevels"
+                :key="i"
+                :value="i"
+              >{{ qualityLabel(lvl, i) }}</option>
+            </select>
           </div>
         </div>
 
@@ -262,9 +426,63 @@ onBeforeUnmount(() => {
         <span class="text-sm text-zinc-200 truncate font-medium">
           {{ playlistStore.selectedChannel.name }}
         </span>
-        <span class="text-xs text-zinc-500 ml-auto truncate">
-          {{ playlistStore.selectedChannel.group }}
+        <!-- Programa atual (EPG) -->
+        <span v-if="currentNowProgram" class="text-xs text-zinc-500 truncate hidden sm:block">
+          · {{ currentNowProgram.title }}
         </span>
+        <div class="flex items-center gap-2 ml-auto shrink-0">
+          <!-- Botão EPG -->
+          <button
+            v-if="playlistStore.selectedChannel.tvgId"
+            class="text-xs px-2 py-0.5 rounded transition-colors"
+            :class="epgPanelOpen
+              ? 'bg-indigo-600 text-white'
+              : 'text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800'"
+            @click="epgPanelOpen = !epgPanelOpen"
+          >
+            {{ t('player.epg.button') }}
+          </button>
+          <span class="text-xs text-zinc-600 truncate">{{ playlistStore.selectedChannel.group }}</span>
+        </div>
+      </div>
+
+      <!-- Painel EPG -->
+      <div
+        v-if="epgPanelOpen && playlistStore.selectedChannel"
+        class="bg-zinc-950 border-t border-zinc-800 overflow-y-auto shrink-0"
+        style="max-height: 220px"
+      >
+        <div class="px-4 py-2 border-b border-zinc-800 flex items-center justify-between">
+          <span class="text-xs font-semibold text-zinc-400 uppercase tracking-wider">{{ t('player.epg.schedule') }}</span>
+          <button class="text-zinc-600 hover:text-zinc-300 text-xs" @click="epgPanelOpen = false">✕</button>
+        </div>
+        <div v-if="todayPrograms.length === 0" class="p-4 text-xs text-zinc-600 text-center">
+          {{ epgStore.sources.length === 0 ? t('player.epg.noSources') : t('player.epg.noData') }}
+        </div>
+        <div v-else class="divide-y divide-zinc-800/50">
+          <div
+            v-for="prog in todayPrograms"
+            :key="prog.id"
+            class="flex items-start gap-3 px-4 py-2 text-xs"
+            :class="isNowProgram(prog) ? 'bg-indigo-600/10 border-l-2 border-indigo-500' : 'border-l-2 border-transparent'"
+          >
+            <span class="text-zinc-500 shrink-0 w-10">{{ formatTime(prog.start) }}</span>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2">
+                <span
+                  class="font-medium truncate"
+                  :class="isNowProgram(prog) ? 'text-indigo-300' : 'text-zinc-300'"
+                >{{ prog.title }}</span>
+                <span
+                  v-if="isNowProgram(prog)"
+                  class="shrink-0 text-[10px] bg-indigo-600 text-white px-1.5 py-0.5 rounded-full font-semibold uppercase tracking-wide"
+                >{{ t('player.epg.now') }}</span>
+              </div>
+              <p v-if="prog.description" class="text-zinc-600 truncate mt-0.5">{{ prog.description }}</p>
+            </div>
+            <span class="text-zinc-600 shrink-0">{{ formatTime(prog.stop) }}</span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -276,7 +494,6 @@ onBeforeUnmount(() => {
       style="transition: background-color 150ms"
       @mousedown.prevent="startResize"
     >
-      <!-- grip visual centralizado -->
       <div class="absolute inset-y-0 left-1/2 -translate-x-1/2 flex flex-col items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
         <span class="w-0.5 h-4 rounded-full bg-white/40" />
         <span class="w-0.5 h-4 rounded-full bg-white/40" />
@@ -302,131 +519,206 @@ onBeforeUnmount(() => {
       </button>
 
       <template v-if="sidebarOpen">
-        <!-- Seletor de playlist -->
-        <div class="px-3 pt-3 pb-2 border-b border-zinc-800 shrink-0">
-          <select
-            class="w-full bg-zinc-800 border border-zinc-700 text-zinc-200 text-sm rounded px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            :value="playlistStore.activePlaylist?.id"
-            @change="(e) => {
-              const pl = playlistStore.playlists.find((p: { id?: number }) => p.id === Number((e.target as HTMLSelectElement).value))
-              if (pl) playlistStore.selectPlaylist(pl)
-            }"
+        <!-- Abas -->
+        <div class="flex border-b border-zinc-800 shrink-0">
+          <button
+            v-for="tab in (['channels', 'favorites', 'history'] as const)"
+            :key="tab"
+            class="flex-1 py-2 text-xs font-medium transition-colors"
+            :class="activeTab === tab
+              ? 'text-indigo-400 border-b-2 border-indigo-500 -mb-px'
+              : 'text-zinc-500 hover:text-zinc-300'"
+            @click="activeTab = tab"
           >
-            <option value="" disabled :selected="!playlistStore.activePlaylist">
-              {{ t('player.sidebar.selectPlaylist') }}
-            </option>
-            <option v-for="pl in playlistStore.playlists" :key="pl.id" :value="pl.id">
-              {{ pl.name }}
-            </option>
-          </select>
+            {{ tab === 'channels' ? t('player.tabs.channels') : tab === 'favorites' ? t('player.tabs.favorites') : t('player.tabs.history') }}
+          </button>
         </div>
 
-        <!-- Busca -->
-        <div class="px-3 py-2 border-b border-zinc-800 shrink-0">
-          <input
-            v-model="playlistStore.searchQuery"
-            type="search"
-            :placeholder="t('player.sidebar.search')"
-            class="w-full bg-zinc-800 border border-zinc-700 text-zinc-200 text-sm rounded px-2 py-1.5 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-        </div>
-
-        <!-- Expandir / Recolher todos os grupos -->
-        <div
-          v-if="settingsStore.groupingEnabled && playlistStore.groupedChannels.length > 0"
-          class="px-3 py-1.5 border-b border-zinc-800 flex items-center justify-end gap-3 shrink-0"
-        >
-          <button
-            class="text-xs text-zinc-500 hover:text-zinc-200 transition-colors"
-            @click="expandAll"
-          >{{ t('player.sidebar.expandAll') }}</button>
-          <span class="text-zinc-700 select-none">·</span>
-          <button
-            class="text-xs text-zinc-500 hover:text-zinc-200 transition-colors"
-            @click="collapseAll"
-          >{{ t('player.sidebar.collapseAll') }}</button>
-        </div>
-
-        <!-- Lista com agrupamento -->
-        <div class="flex-1 overflow-y-auto">
-          <!-- Sem playlist -->
-          <p v-if="!playlistStore.activePlaylist" class="p-4 text-xs text-zinc-600 text-center">
-            {{ t('player.sidebar.noPlaylist') }}
-          </p>
-
-          <!-- Agrupamento ativo -->
-          <template v-else-if="settingsStore.groupingEnabled">
-            <div
-              v-for="group in playlistStore.groupedChannels"
-              :key="group.name"
+        <!-- ── ABA: CANAIS ──────────────────────────────────────── -->
+        <template v-if="activeTab === 'channels'">
+          <!-- Seletor de playlist -->
+          <div class="px-3 pt-3 pb-2 border-b border-zinc-800 shrink-0">
+            <select
+              class="w-full bg-zinc-800 border border-zinc-700 text-zinc-200 text-sm rounded px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              :value="playlistStore.activePlaylist?.id"
+              @change="(e) => {
+                const pl = playlistStore.playlists.find((p: { id?: number }) => p.id === Number((e.target as HTMLSelectElement).value))
+                if (pl) playlistStore.selectPlaylist(pl)
+              }"
             >
-              <!-- Cabeçalho do grupo -->
-              <button
-                class="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50 transition-colors"
-                @click="toggleGroup(group.name)"
-              >
-                <svg
-                  class="w-3 h-3 transition-transform shrink-0"
-                  :class="expandedGroups.has(group.name) ? 'rotate-90' : ''"
-                  fill="currentColor" viewBox="0 0 20 20"
-                >
-                  <path d="M7.293 4.707a1 1 0 011.414 0L14 10l-5.293 5.293a1 1 0 01-1.414-1.414L11.586 10 6.293 5.121a1 1 0 010-1.414z"/>
-                </svg>
-                <span class="truncate flex-1 text-left">{{ tGroup(group.name) }}</span>
-                <span class="text-zinc-700 font-normal normal-case tracking-normal">{{ group.channels.length }}</span>
-              </button>
+              <option value="" disabled :selected="!playlistStore.activePlaylist">
+                {{ t('player.sidebar.selectPlaylist') }}
+              </option>
+              <option v-for="pl in playlistStore.playlists" :key="pl.id" :value="pl.id">
+                {{ pl.name }}
+              </option>
+            </select>
+          </div>
 
-              <!-- Canais do grupo -->
-              <div v-show="expandedGroups.has(group.name)">
+          <!-- Busca -->
+          <div class="px-3 py-2 border-b border-zinc-800 shrink-0">
+            <input
+              v-model="playlistStore.searchQuery"
+              type="search"
+              :placeholder="t('player.sidebar.search')"
+              class="w-full bg-zinc-800 border border-zinc-700 text-zinc-200 text-sm rounded px-2 py-1.5 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
+          <!-- Expandir / Recolher todos os grupos -->
+          <div
+            v-if="settingsStore.groupingEnabled && playlistStore.groupedChannels.length > 0"
+            class="px-3 py-1.5 border-b border-zinc-800 flex items-center justify-end gap-3 shrink-0"
+          >
+            <button class="text-xs text-zinc-500 hover:text-zinc-200 transition-colors" @click="expandAll">{{ t('player.sidebar.expandAll') }}</button>
+            <span class="text-zinc-700 select-none">·</span>
+            <button class="text-xs text-zinc-500 hover:text-zinc-200 transition-colors" @click="collapseAll">{{ t('player.sidebar.collapseAll') }}</button>
+          </div>
+
+          <!-- Lista de canais -->
+          <div class="flex-1 overflow-y-auto">
+            <p v-if="!playlistStore.activePlaylist" class="p-4 text-xs text-zinc-600 text-center">
+              {{ t('player.sidebar.noPlaylist') }}
+            </p>
+
+            <!-- Agrupamento ativo -->
+            <template v-else-if="settingsStore.groupingEnabled">
+              <div v-for="group in playlistStore.groupedChannels" :key="group.name">
                 <button
-                  v-for="ch in group.channels"
-                  :key="ch.id"
-                  class="w-full flex items-center gap-2 px-4 py-2 text-sm transition-colors"
-                  :class="
-                    playlistStore.selectedChannel?.id === ch.id
-                      ? 'bg-indigo-600/20 text-indigo-300 border-l-2 border-indigo-500'
-                      : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 border-l-2 border-transparent'
-                  "
-                  @click="playChannel(ch)"
+                  class="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50 transition-colors"
+                  @click="toggleGroup(group.name)"
                 >
-                  <img
-                    v-if="ch.logo"
-                    :src="ch.logo"
-                    class="w-5 h-5 object-contain rounded shrink-0"
-                    alt=""
-                  />
-                  <div v-else class="w-5 h-5 bg-zinc-700 rounded shrink-0" />
-                  <span class="truncate">{{ ch.name }}</span>
+                  <svg class="w-3 h-3 transition-transform shrink-0" :class="expandedGroups.has(group.name) ? 'rotate-90' : ''" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M7.293 4.707a1 1 0 011.414 0L14 10l-5.293 5.293a1 1 0 01-1.414-1.414L11.586 10 6.293 5.121a1 1 0 010-1.414z"/>
+                  </svg>
+                  <span class="truncate flex-1 text-left">{{ tGroup(group.name) }}</span>
+                  <span class="text-zinc-700 font-normal normal-case tracking-normal">{{ group.channels.length }}</span>
                 </button>
+                <div v-show="expandedGroups.has(group.name)">
+                  <div
+                    v-for="ch in group.channels"
+                    :key="ch.id"
+                    class="w-full flex items-center gap-2 px-4 py-2 text-sm transition-colors cursor-pointer"
+                    :class="playlistStore.selectedChannel?.id === ch.id
+                      ? 'bg-indigo-600/20 text-indigo-300 border-l-2 border-indigo-500'
+                      : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 border-l-2 border-transparent'"
+                    @click="playChannel(ch)"
+                  >
+                    <img v-if="ch.logo" :src="ch.logo" class="w-5 h-5 object-contain rounded shrink-0" alt="" />
+                    <div v-else class="w-5 h-5 bg-zinc-700 rounded shrink-0" />
+                    <div class="flex-1 min-w-0">
+                      <div class="truncate">{{ ch.name }}</div>
+                      <div v-if="ch.tvgId && currentProgramIds.get(ch.tvgId)" class="text-[10px] text-zinc-600 truncate">
+                        {{ currentProgramIds.get(ch.tvgId)?.title }}
+                      </div>
+                    </div>
+                    <!-- Botão favorito -->
+                    <button
+                      class="shrink-0 text-base leading-none transition-colors"
+                      :class="favoritesStore.isFavorite(ch.id!) ? 'text-yellow-400' : 'text-zinc-700 hover:text-zinc-400'"
+                      :aria-label="favoritesStore.isFavorite(ch.id!) ? 'Remover favorito' : 'Adicionar favorito'"
+                      @click.stop="favoritesStore.toggleFavorite(ch)"
+                    >{{ favoritesStore.isFavorite(ch.id!) ? '★' : '☆' }}</button>
+                  </div>
+                </div>
               </div>
-            </div>
-          </template>
+            </template>
 
-          <!-- Lista plana (agrupamento desativado) -->
-          <template v-else>
-            <button
-              v-for="ch in playlistStore.filteredChannels"
-              :key="ch.id"
-              class="w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors"
-              :class="
-                playlistStore.selectedChannel?.id === ch.id
+            <!-- Lista plana -->
+            <template v-else>
+              <div
+                v-for="ch in playlistStore.filteredChannels"
+                :key="ch.id"
+                class="w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer"
+                :class="playlistStore.selectedChannel?.id === ch.id
                   ? 'bg-indigo-600/20 text-indigo-300 border-l-2 border-indigo-500'
-                  : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 border-l-2 border-transparent'
-              "
-              @click="playChannel(ch)"
-            >
-              <img
-                v-if="ch.logo"
-                :src="ch.logo"
-                class="w-5 h-5 object-contain rounded shrink-0"
-                alt=""
-              />
-              <div v-else class="w-5 h-5 bg-zinc-700 rounded shrink-0" />
-              <span class="truncate">{{ ch.name }}</span>
-            </button>
-          </template>
-        </div>
+                  : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 border-l-2 border-transparent'"
+                @click="playChannel(ch)"
+              >
+                <img v-if="ch.logo" :src="ch.logo" class="w-5 h-5 object-contain rounded shrink-0" alt="" />
+                <div v-else class="w-5 h-5 bg-zinc-700 rounded shrink-0" />
+                <div class="flex-1 min-w-0">
+                  <div class="truncate">{{ ch.name }}</div>
+                  <div v-if="ch.tvgId && currentProgramIds.get(ch.tvgId)" class="text-[10px] text-zinc-600 truncate">
+                    {{ currentProgramIds.get(ch.tvgId)?.title }}
+                  </div>
+                </div>
+                <button
+                  class="shrink-0 text-base leading-none transition-colors"
+                  :class="favoritesStore.isFavorite(ch.id!) ? 'text-yellow-400' : 'text-zinc-700 hover:text-zinc-400'"
+                  @click.stop="favoritesStore.toggleFavorite(ch)"
+                >{{ favoritesStore.isFavorite(ch.id!) ? '★' : '☆' }}</button>
+              </div>
+            </template>
+          </div>
+        </template>
+
+        <!-- ── ABA: FAVORITOS ───────────────────────────────────── -->
+        <template v-else-if="activeTab === 'favorites'">
+          <div class="flex-1 overflow-y-auto">
+            <p v-if="favoriteChannels.length === 0" class="p-4 text-xs text-zinc-600 text-center whitespace-pre-line">
+              {{ t('player.favorites.empty') }}
+            </p>
+            <template v-else>
+              <div
+                v-for="ch in favoriteChannels"
+                :key="ch.id"
+                class="w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer"
+                :class="playlistStore.selectedChannel?.id === ch.id
+                  ? 'bg-indigo-600/20 text-indigo-300 border-l-2 border-indigo-500'
+                  : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 border-l-2 border-transparent'"
+                @click="playChannel(ch)"
+              >
+                <img v-if="ch.logo" :src="ch.logo" class="w-5 h-5 object-contain rounded shrink-0" alt="" />
+                <div v-else class="w-5 h-5 bg-zinc-700 rounded shrink-0" />
+                <span class="truncate flex-1">{{ ch.name }}</span>
+                <button
+                  class="shrink-0 text-base text-yellow-400 leading-none"
+                  @click.stop="favoritesStore.toggleFavorite(ch)"
+                >★</button>
+              </div>
+            </template>
+          </div>
+        </template>
+
+        <!-- ── ABA: RECENTES ────────────────────────────────────── -->
+        <template v-else-if="activeTab === 'history'">
+          <div class="flex-1 overflow-y-auto">
+            <div v-if="historyStore.entries.length > 0" class="px-3 py-1.5 border-b border-zinc-800 flex justify-end">
+              <button
+                class="text-xs text-zinc-600 hover:text-red-400 transition-colors"
+                @click="historyStore.clearHistory()"
+              >{{ t('player.history.clear') }}</button>
+            </div>
+            <p v-if="historyStore.entries.length === 0" class="p-4 text-xs text-zinc-600 text-center">
+              {{ t('player.history.empty') }}
+            </p>
+            <template v-else>
+              <button
+                v-for="entry in historyStore.entries"
+                :key="entry.id"
+                class="w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors"
+                :class="playlistStore.selectedChannel?.id === entry.channelId
+                  ? 'bg-indigo-600/20 text-indigo-300 border-l-2 border-indigo-500'
+                  : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 border-l-2 border-transparent'"
+                @click="() => {
+                  const ch = playlistStore.channels.find((c: Channel) => c.id === entry.channelId)
+                  if (ch) playChannel(ch)
+                }"
+              >
+                <img v-if="entry.channelLogo" :src="entry.channelLogo" class="w-5 h-5 object-contain rounded shrink-0" alt="" />
+                <div v-else class="w-5 h-5 bg-zinc-700 rounded shrink-0" />
+                <div class="flex-1 min-w-0">
+                  <div class="truncate">{{ entry.channelName }}</div>
+                  <div class="text-[10px] text-zinc-600">{{ entry.channelGroup }}</div>
+                </div>
+                <span class="shrink-0 text-[10px] text-zinc-600">{{ relativeTime(entry.watchedAt) }}</span>
+              </button>
+            </template>
+          </div>
+        </template>
       </template>
     </aside>
   </div>
 </template>
+

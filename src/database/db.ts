@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie'
-import type { Playlist, Channel, AppSettings } from '@/types'
+import type { Playlist, Channel, AppSettings, Favorite, HistoryEntry, EpgSource, EpgProgram } from '@/types'
 
 // ─── Tipos das tabelas ───────────────────────────────────────────────────────
 
@@ -15,6 +15,10 @@ class IPTVDatabase extends Dexie {
   playlists!: PlaylistTable
   channels!: ChannelTable
   settings!: EntityTable<SettingsRecord, 'id'>
+  favorites!: EntityTable<Favorite, 'id'>
+  history!: EntityTable<HistoryEntry, 'id'>
+  epgSources!: EntityTable<EpgSource, 'id'>
+  epgPrograms!: EntityTable<EpgProgram, 'id'>
 
   constructor() {
     super('IPTVPlayerDB')
@@ -32,6 +36,17 @@ class IPTVDatabase extends Dexie {
       settings: 'id',
     }).upgrade(async (tx) => {
       await tx.table('settings').update(1, { language: 'pt-BR' })
+    })
+
+    // v3: adiciona favoritos, histórico e EPG
+    this.version(3).stores({
+      playlists: '++id, name, source, createdAt',
+      channels: '++id, playlistId, name, group, tvgId, url',
+      settings: 'id',
+      favorites: '++id, channelId',
+      history: '++id, channelId, watchedAt',
+      epgSources: '++id, url',
+      epgPrograms: '++id, sourceId, channelId, start',
     })
   }
 }

@@ -82,3 +82,47 @@ export interface HlsStats {
   /** Índice do nível de qualidade HLS (-1 = nativo/desconhecido) */
   level: number
 }
+
+// ─── Favoritos ────────────────────────────────────────────────────────────────
+
+export interface Favorite {
+  id?: number
+  channelId: number
+  addedAt: Date
+}
+
+// ─── Histórico de reprodução ──────────────────────────────────────────────────
+
+export interface HistoryEntry {
+  id?: number
+  channelId: number
+  channelName: string
+  channelLogo: string
+  channelGroup: string
+  playlistId: number
+  watchedAt: Date
+}
+
+// ─── Fonte EPG ────────────────────────────────────────────────────────────────
+
+export interface EpgSource {
+  id?: number
+  name: string
+  url: string
+  lastFetched: Date | null
+}
+
+// ─── Programa EPG (XMLTV) ─────────────────────────────────────────────────────
+
+export interface EpgProgram {
+  id?: number
+  /** ID da fonte (EpgSource.id) */
+  sourceId: number
+  /** tvg-id do canal (atributo channel= do elemento <programme>) */
+  channelId: string
+  title: string
+  description: string
+  category: string
+  start: Date
+  stop: Date
+}

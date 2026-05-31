@@ -34,6 +34,7 @@ export const usePlaylistStore = defineStore('playlist', () => {
   }
 
   async function loadChannels(playlistId: number) {
+    searchQuery.value = ''
     isLoading.value = true
     error.value = null
     try {
