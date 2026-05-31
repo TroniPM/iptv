@@ -94,11 +94,41 @@ function onVideoError() {
 
 // ─── Lista lateral ────────────────────────────────────────────────────────────
 const sidebarOpen = ref(true)
+const sidebarWidth = ref(288) // px — equivale a w-72
+const isResizing = ref(false)
 const expandedGroups = ref<Set<string>>(new Set())
 
 function toggleGroup(name: string) {
   if (expandedGroups.value.has(name)) expandedGroups.value.delete(name)
   else expandedGroups.value.add(name)
+}
+
+function expandAll() {
+  playlistStore.groupedChannels.forEach(g => expandedGroups.value.add(g.name))
+}
+
+function collapseAll() {
+  expandedGroups.value.clear()
+}
+
+function startResize(e: MouseEvent) {
+  isResizing.value = true
+  const startX = e.clientX
+  const startWidth = sidebarWidth.value
+
+  function onMove(ev: MouseEvent) {
+    const delta = startX - ev.clientX // arrastar à esquerda = aumentar
+    sidebarWidth.value = Math.min(640, Math.max(160, startWidth + delta))
+  }
+
+  function onUp() {
+    isResizing.value = false
+    document.removeEventListener('mousemove', onMove)
+    document.removeEventListener('mouseup', onUp)
+  }
+
+  document.addEventListener('mousemove', onMove)
+  document.addEventListener('mouseup', onUp)
 }
 
 // Expande todos os grupos ao carregar
@@ -236,10 +266,27 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
+    <!-- ── Handle de resize da sidebar ───────────────────────────── -->
+    <div
+      v-if="sidebarOpen"
+      class="w-1 shrink-0 cursor-col-resize group relative z-10"
+      :class="isResizing ? 'bg-indigo-400' : 'bg-zinc-800 hover:bg-indigo-500'"
+      style="transition: background-color 150ms"
+      @mousedown.prevent="startResize"
+    >
+      <!-- grip visual centralizado -->
+      <div class="absolute inset-y-0 left-1/2 -translate-x-1/2 flex flex-col items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+        <span class="w-0.5 h-4 rounded-full bg-white/40" />
+        <span class="w-0.5 h-4 rounded-full bg-white/40" />
+      </div>
+    </div>
+
     <!-- ── Sidebar: lista de canais ──────────────────────────────── -->
     <aside
-      class="flex flex-col bg-zinc-900 border-l border-zinc-800 transition-all duration-300 shrink-0"
-      :class="sidebarOpen ? 'w-72' : 'w-10'"
+      class="flex flex-col bg-zinc-900 border-l border-zinc-800 shrink-0 overflow-hidden"
+      :style="sidebarOpen
+        ? { width: sidebarWidth + 'px', transition: isResizing ? 'none' : 'width 300ms' }
+        : { width: '2.5rem', transition: 'width 300ms' }"
     >
       <!-- Toggle sidebar -->
       <button
@@ -280,6 +327,22 @@ onBeforeUnmount(() => {
             placeholder="Buscar canal..."
             class="w-full bg-zinc-800 border border-zinc-700 text-zinc-200 text-sm rounded px-2 py-1.5 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
+        </div>
+
+        <!-- Expandir / Recolher todos os grupos -->
+        <div
+          v-if="settingsStore.groupingEnabled && playlistStore.groupedChannels.length > 0"
+          class="px-3 py-1.5 border-b border-zinc-800 flex items-center justify-end gap-3 shrink-0"
+        >
+          <button
+            class="text-xs text-zinc-500 hover:text-zinc-200 transition-colors"
+            @click="expandAll"
+          >Expandir todos</button>
+          <span class="text-zinc-700 select-none">·</span>
+          <button
+            class="text-xs text-zinc-500 hover:text-zinc-200 transition-colors"
+            @click="collapseAll"
+          >Recolher todos</button>
         </div>
 
         <!-- Lista com agrupamento -->

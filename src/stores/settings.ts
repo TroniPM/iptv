@@ -16,11 +16,11 @@ export const useSettingsStore = defineStore('settings', () => {
   async function load() {
     const record = await db.settings.get(1)
     if (record) {
-      groupingEnabled.value = record.groupingEnabled
-      proxyEnabled.value = record.proxyEnabled
-      proxyUrl.value = record.proxyUrl
-      lastChannelId.value = record.lastChannelId
-      lastPlaylistId.value = record.lastPlaylistId
+      groupingEnabled.value = record.groupingEnabled ?? true
+      proxyEnabled.value = record.proxyEnabled ?? false
+      proxyUrl.value = record.proxyUrl ?? ''
+      lastChannelId.value = record.lastChannelId ?? null
+      lastPlaylistId.value = record.lastPlaylistId ?? null
     }
   }
 
