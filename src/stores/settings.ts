@@ -8,6 +8,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const groupingEnabled = ref(true)
   const proxyEnabled = ref(false)
   const proxyUrl = ref('')
+  const forceHttps = ref(false)
   const lastChannelId = ref<number | null>(null)
   const lastPlaylistId = ref<number | null>(null)
   const language = ref<string>('pt-BR')
@@ -20,6 +21,7 @@ export const useSettingsStore = defineStore('settings', () => {
       groupingEnabled.value = record.groupingEnabled ?? true
       proxyEnabled.value = record.proxyEnabled ?? false
       proxyUrl.value = record.proxyUrl ?? ''
+      forceHttps.value = record.forceHttps ?? false
       lastChannelId.value = record.lastChannelId ?? null
       lastPlaylistId.value = record.lastPlaylistId ?? null
       language.value = record.language ?? 'pt-BR'
@@ -31,6 +33,7 @@ export const useSettingsStore = defineStore('settings', () => {
       groupingEnabled.value = partial.groupingEnabled!
     if ('proxyEnabled' in partial) proxyEnabled.value = partial.proxyEnabled!
     if ('proxyUrl' in partial) proxyUrl.value = partial.proxyUrl!
+    if ('forceHttps' in partial) forceHttps.value = partial.forceHttps!
     if ('lastChannelId' in partial) lastChannelId.value = partial.lastChannelId!
     if ('lastPlaylistId' in partial)
       lastPlaylistId.value = partial.lastPlaylistId!
@@ -47,6 +50,10 @@ export const useSettingsStore = defineStore('settings', () => {
     await save({ proxyEnabled: !proxyEnabled.value })
   }
 
+  async function toggleForceHttps() {
+    await save({ forceHttps: !forceHttps.value })
+  }
+
   async function setLanguage(lang: string) {
     await save({ language: lang })
   }
@@ -55,6 +62,7 @@ export const useSettingsStore = defineStore('settings', () => {
     groupingEnabled,
     proxyEnabled,
     proxyUrl,
+    forceHttps,
     lastChannelId,
     lastPlaylistId,
     language,
@@ -62,6 +70,7 @@ export const useSettingsStore = defineStore('settings', () => {
     save,
     toggleGrouping,
     toggleProxy,
+    toggleForceHttps,
     setLanguage,
   }
 })

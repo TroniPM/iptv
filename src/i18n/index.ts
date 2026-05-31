@@ -40,12 +40,15 @@ const UI_TRANSLATIONS: Record<Locale, Record<string, string>> = {
     'settings.saved':                'Configurações salvas.',
     'settings.misc.title':           'Diversos',
     'settings.lists.title':          'Minhas Listas',
+    'settings.forceHttps.title':     'Forçar HTTPS nos Streams',
+    'settings.forceHttps.desc':      'Substitui http:// por https:// nas URLs dos canais. Resolve o bloqueio de Mixed Content no GitHub Pages e outros sites HTTPS. Pode falhar em servidores que não suportam HTTPS.',
 
     // Player — erros de stream
     'player.stream.error.init':             'Falha ao inicializar o stream.',
     'player.stream.error.playback':         'Erro ao reproduzir o stream. Verifique a URL ou configure um proxy.',
     'player.stream.error.invalidUrl':       'URL do canal inválida ou com protocolo não suportado.',
     'player.stream.error.autoplayBlocked':  'Autoplay bloqueado pelo navegador. Clique em reproduzir no player.',
+    'player.stream.error.mixedContent':     'Este canal usa HTTP, mas a página está em HTTPS. O navegador bloqueou a requisição (Mixed Content). Ative o Proxy CORS nas configurações para contornar este problema.',
 
     // Player — painel de estatísticas
     'player.stats.show':             '📊 Stats',
@@ -192,12 +195,15 @@ const UI_TRANSLATIONS: Record<Locale, Record<string, string>> = {
     'settings.saved':                'Settings saved.',
     'settings.misc.title':           'Miscellaneous',
     'settings.lists.title':          'My Playlists',
+    'settings.forceHttps.title':     'Force HTTPS on Streams',
+    'settings.forceHttps.desc':      'Replaces http:// with https:// in channel URLs. Fixes Mixed Content blocking on GitHub Pages and other HTTPS sites. May fail on servers that do not support HTTPS.',
 
     // Player — stream errors
     'player.stream.error.init':             'Failed to initialize the stream.',
     'player.stream.error.playback':         'Stream playback error. Check the URL or configure a proxy.',
     'player.stream.error.invalidUrl':       'Invalid channel URL or unsupported protocol.',
     'player.stream.error.autoplayBlocked':  'Autoplay blocked by the browser. Click play in the player.',
+    'player.stream.error.mixedContent':     'This channel uses HTTP, but the page is on HTTPS. The browser blocked the request (Mixed Content). Enable the CORS Proxy in settings to work around this.',
 
     // Player — stats panel
     'player.stats.show':             '📊 Stats',

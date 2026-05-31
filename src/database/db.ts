@@ -64,6 +64,7 @@ db.on('ready', async () => {
       groupingEnabled: true,
       proxyEnabled: false,
       proxyUrl: '',
+      forceHttps: false,
       lastChannelId: null,
       lastPlaylistId: null,
       language: 'pt-BR',

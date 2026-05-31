@@ -48,6 +48,8 @@ export interface AppSettings {
   proxyEnabled: boolean
   /** URL do proxy para contornar CORS (ex: "https://proxy.example.com/?url=") */
   proxyUrl: string
+  /** Substitui http:// por https:// nas URLs dos streams para evitar Mixed Content */
+  forceHttps: boolean
   /** Último canal assistido (id) */
   lastChannelId: number | null
   /** Última playlist selecionada (id) */

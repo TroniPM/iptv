@@ -27,19 +27,39 @@ export function normalizeStreamUrl(url: string): string {
   return url
 }
 
+// ─── Detecção de Mixed Content ────────────────────────────────────────────────
+
+/**
+ * Retorna true quando a página está em HTTPS e a URL do stream é HTTP,
+ * situação em que o navegador bloqueará a requisição (Mixed Content).
+ */
+export function isMixedContent(url: string): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    window.location.protocol === 'https:' &&
+    url.toLowerCase().startsWith('http:')
+  )
+}
+
 // ─── Preparação de URL — ponto centralizador ────────────────────────────────
 
 /**
  * Ponto centralizador para TODAS as requisições de stream e fetch de M3U.
  * Aplica o proxy CORS quando `useProxy` é `true` e `proxyBaseUrl` está configurado.
+ * Aplica upgrade HTTP→HTTPS quando `forceHttps` é `true`.
  *
  * @param url          URL original do recurso
  * @param useProxy     Se deve aplicar o proxy
  * @param proxyBaseUrl URL-base do proxy (ex: "https://proxy.com/?url=")
+ * @param forceHttps   Se deve substituir http:// por https://
  */
-export function prepareUrl(url: string, useProxy = false, proxyBaseUrl = ''): string {
-  if (!useProxy || !proxyBaseUrl || !url) return url
-  return `${proxyBaseUrl}${encodeURIComponent(url)}`
+export function prepareUrl(url: string, useProxy = false, proxyBaseUrl = '', forceHttps = false): string {
+  let prepared = url
+  if (forceHttps && prepared.toLowerCase().startsWith('http:')) {
+    prepared = 'https:' + prepared.slice(5)
+  }
+  if (!useProxy || !proxyBaseUrl || !prepared) return prepared
+  return `${proxyBaseUrl}${encodeURIComponent(prepared)}`
 }
 
 // ─── Montagem / desmontagem do player HLS ────────────────────────────────────
@@ -52,6 +72,7 @@ let hlsInstance: Hls | null = null
  *
  * @param useProxy          Se o proxy CORS deve ser aplicado (deve refletir o flag proxyEnabled)
  * @param proxyUrl          URL-base do proxy
+ * @param forceHttps        Se deve substituir http:// por https:// na URL
  * @param onError           Callback chamado quando ocorre um erro fatal no stream
  * @param onLevelsReady     Callback chamado quando os níveis de qualidade HLS estão disponíveis
  * @param onAutoplayBlocked Callback chamado quando o autoplay é bloqueado pelo browser
@@ -61,12 +82,13 @@ export function attachStream(
   url: string,
   useProxy = false,
   proxyUrl = '',
+  forceHttps = false,
   onError?: (message: string) => void,
   onLevelsReady?: (levels: Array<{ height?: number; width?: number; bitrate: number }>) => void,
   onAutoplayBlocked?: () => void,
 ): Hls | null {
   const normalizedUrl = normalizeStreamUrl(url)
-  const finalUrl = prepareUrl(normalizedUrl, useProxy, proxyUrl)
+  const finalUrl = prepareUrl(normalizedUrl, useProxy, proxyUrl, forceHttps)
   const type = detectStreamType(normalizedUrl)
 
   destroyStream()
