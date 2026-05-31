@@ -6,6 +6,7 @@ import type { AppSettings } from '@/types'
 export const useSettingsStore = defineStore('settings', () => {
   // ─── State ─────────────────────────────────────────────────────────────────
   const groupingEnabled = ref(true)
+  const proxyEnabled = ref(false)
   const proxyUrl = ref('')
   const lastChannelId = ref<number | null>(null)
   const lastPlaylistId = ref<number | null>(null)
@@ -16,6 +17,7 @@ export const useSettingsStore = defineStore('settings', () => {
     const record = await db.settings.get(1)
     if (record) {
       groupingEnabled.value = record.groupingEnabled
+      proxyEnabled.value = record.proxyEnabled
       proxyUrl.value = record.proxyUrl
       lastChannelId.value = record.lastChannelId
       lastPlaylistId.value = record.lastPlaylistId
@@ -25,6 +27,7 @@ export const useSettingsStore = defineStore('settings', () => {
   async function save(partial: Partial<AppSettings>) {
     if ('groupingEnabled' in partial)
       groupingEnabled.value = partial.groupingEnabled!
+    if ('proxyEnabled' in partial) proxyEnabled.value = partial.proxyEnabled!
     if ('proxyUrl' in partial) proxyUrl.value = partial.proxyUrl!
     if ('lastChannelId' in partial) lastChannelId.value = partial.lastChannelId!
     if ('lastPlaylistId' in partial)
@@ -37,13 +40,19 @@ export const useSettingsStore = defineStore('settings', () => {
     await save({ groupingEnabled: !groupingEnabled.value })
   }
 
+  async function toggleProxy() {
+    await save({ proxyEnabled: !proxyEnabled.value })
+  }
+
   return {
     groupingEnabled,
+    proxyEnabled,
     proxyUrl,
     lastChannelId,
     lastPlaylistId,
     load,
     save,
     toggleGrouping,
+    toggleProxy,
   }
 })

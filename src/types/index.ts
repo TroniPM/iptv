@@ -44,6 +44,8 @@ export interface ChannelGroup {
 export interface AppSettings {
   /** Ativa o agrupamento inteligente por group-title */
   groupingEnabled: boolean
+  /** Ativa o roteamento de requests pelo proxy CORS */
+  proxyEnabled: boolean
   /** URL do proxy para contornar CORS (ex: "https://proxy.example.com/?url=") */
   proxyUrl: string
   /** Último canal assistido (id) */
@@ -62,4 +64,19 @@ export interface PlayerState {
   isFullscreen: boolean
   isLoading: boolean
   error: string | null
+}
+
+// ─── Estatísticas HLS (Stats for Nerds) ──────────────────────────────────────
+
+export interface HlsStats {
+  /** Bitrate atual em kbps */
+  bitrate: number
+  /** Resolução (ex: "1920×1080") ou "-" quando desconhecida */
+  resolution: string
+  /** Buffer disponível à frente do playhead em segundos */
+  bufferLength: number
+  /** Total acumulado de frames perdidos */
+  droppedFrames: number
+  /** Índice do nível de qualidade HLS (-1 = nativo/desconhecido) */
+  level: number
 }

@@ -38,6 +38,7 @@ db.on('ready', async () => {
     await (db.settings as any).add({
       id: 1,
       groupingEnabled: true,
+      proxyEnabled: false,
       proxyUrl: '',
       lastChannelId: null,
       lastPlaylistId: null,

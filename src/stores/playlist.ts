@@ -2,9 +2,13 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { db } from '@/database/db'
 import { parseM3U, groupChannels, filterChannels } from '@/services/m3uParser'
+import { prepareUrl } from '@/services/stream'
+import { useSettingsStore } from '@/stores/settings'
 import type { Playlist, Channel, ChannelGroup } from '@/types'
 
 export const usePlaylistStore = defineStore('playlist', () => {
+  const settingsStore = useSettingsStore()
+
   // ─── State ─────────────────────────────────────────────────────────────────
   const playlists = ref<Playlist[]>([])
   const channels = ref<Channel[]>([])
@@ -20,7 +24,7 @@ export const usePlaylistStore = defineStore('playlist', () => {
   )
 
   const groupedChannels = computed<ChannelGroup[]>(() =>
-    groupChannels(filteredChannels.value),
+    groupChannels(filteredChannels.value, settingsStore.groupingEnabled),
   )
 
   // ─── Actions ────────────────────────────────────────────────────────────────
@@ -94,7 +98,8 @@ export const usePlaylistStore = defineStore('playlist', () => {
     isLoading.value = true
     error.value = null
     try {
-      const response = await fetch(url)
+      const finalUrl = prepareUrl(url, settingsStore.proxyEnabled && Boolean(settingsStore.proxyUrl), settingsStore.proxyUrl)
+      const response = await fetch(finalUrl)
       if (!response.ok) throw new Error(`HTTP ${response.status}`)
       const raw = await response.text()
       return importFromText(raw, name, 'url', url)

@@ -188,26 +188,50 @@ onMounted(async () => {
       <div class="flex items-center justify-between gap-4">
         <div>
           <p class="text-sm text-zinc-200">Agrupamento Inteligente</p>
-          <p class="text-xs text-zinc-500 mt-0.5">Organiza canais por <code class="bg-zinc-800 px-1 rounded">group-title</code> na lista lateral</p>
+          <p class="text-xs text-zinc-500 mt-0.5">Categoriza canais automaticamente por palavras-chave (ex: ESPN → Esportes). Desativado exibe lista plana.</p>
         </div>
         <AppToggle v-model="settingsStore.groupingEnabled" @update:model-value="settingsStore.toggleGrouping" />
       </div>
 
       <!-- Proxy -->
-      <div class="space-y-2">
-        <label class="text-sm text-zinc-200">URL do Proxy CORS</label>
-        <p class="text-xs text-zinc-500">Prefixo adicionado antes da URL do stream para contornar restrições CORS.</p>
+      <div class="space-y-3">
+        <div class="flex items-center justify-between gap-4">
+          <div>
+            <p class="text-sm text-zinc-200">Proxy CORS</p>
+            <p class="text-xs text-zinc-500 mt-0.5">Roteia streams e downloads de lista pelo proxy para contornar restrições CORS.</p>
+          </div>
+          <AppToggle
+            v-model="settingsStore.proxyEnabled"
+            :disabled="!settingsStore.proxyUrl"
+            @update:model-value="settingsStore.toggleProxy"
+          />
+        </div>
+
         <div class="flex gap-2">
           <input
             v-model="proxyDraft"
             type="url"
             placeholder="https://meu-proxy.exemplo.com/?url="
-            class="flex-1 bg-zinc-800 border border-zinc-700 text-zinc-200 text-sm rounded px-3 py-2 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            :disabled="settingsStore.proxyEnabled"
+            class="flex-1 bg-zinc-800 border border-zinc-700 text-zinc-200 text-sm rounded px-3 py-2 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
           />
-          <AppButton variant="secondary" @click="saveProxy">Salvar</AppButton>
+          <AppButton
+            variant="secondary"
+            :disabled="settingsStore.proxyEnabled"
+            @click="saveProxy"
+          >
+            Salvar
+          </AppButton>
         </div>
-        <p v-if="settingsStore.proxyUrl" class="text-xs text-emerald-400">
+
+        <p v-if="settingsStore.proxyEnabled && settingsStore.proxyUrl" class="text-xs text-emerald-400">
           ✓ Proxy ativo
+        </p>
+        <p v-else-if="settingsStore.proxyUrl && !settingsStore.proxyEnabled" class="text-xs text-zinc-500">
+          Proxy configurado, mas desativado.
+        </p>
+        <p v-else-if="!settingsStore.proxyUrl" class="text-xs text-zinc-600">
+          Configure uma URL para habilitar o proxy.
         </p>
       </div>
     </section>

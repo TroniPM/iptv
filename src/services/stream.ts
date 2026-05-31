@@ -8,22 +8,38 @@ export type StreamType = 'hls' | 'native' | 'unsupported'
 
 export function detectStreamType(url: string): StreamType {
   const clean = url.split('?')[0].toLowerCase()
-  if (clean.endsWith('.m3u8') || clean.includes('/hls/')) {
-    return Hls.isSupported() ? 'hls' : 'native'
+  if (clean.endsWith('.mp4') || clean.endsWith('.mkv') || clean.endsWith('.avi') || clean.endsWith('.webm')) {
+    return 'native'
   }
-  return 'native'
+  return Hls.isSupported() ? 'hls' : 'native'
 }
 
-// ─── Aplicar proxy (se configurado) ──────────────────────────────────────────
+/**
+ * Normaliza URLs Xtream Codes com extensão .ts para .m3u8,
+ * permitindo que hls.js as reproduza corretamente.
+ */
+export function normalizeStreamUrl(url: string): string {
+  const [base, query] = url.split('?')
+  if (base.toLowerCase().endsWith('.ts')) {
+    const normalized = base.slice(0, -3) + '.m3u8'
+    return query ? `${normalized}?${query}` : normalized
+  }
+  return url
+}
+
+// ─── Preparação de URL — ponto centralizador ────────────────────────────────
 
 /**
- * Prefixa a URL com o proxy, se `proxyUrl` estiver definido.
- * O proxy deve aceitar a URL de destino como parâmetro concatenado.
- * Ex: proxyUrl = "https://cors.proxy/?url=" → "https://cors.proxy/?url=<streamUrl>"
+ * Ponto centralizador para TODAS as requisições de stream e fetch de M3U.
+ * Aplica o proxy CORS quando `useProxy` é `true` e `proxyBaseUrl` está configurado.
+ *
+ * @param url          URL original do recurso
+ * @param useProxy     Se deve aplicar o proxy
+ * @param proxyBaseUrl URL-base do proxy (ex: "https://proxy.com/?url=")
  */
-export function applyProxy(streamUrl: string, proxyUrl: string): string {
-  if (!proxyUrl) return streamUrl
-  return `${proxyUrl}${encodeURIComponent(streamUrl)}`
+export function prepareUrl(url: string, useProxy = false, proxyBaseUrl = ''): string {
+  if (!useProxy || !proxyBaseUrl || !url) return url
+  return `${proxyBaseUrl}${encodeURIComponent(url)}`
 }
 
 // ─── Montagem / desmontagem do player HLS ────────────────────────────────────
@@ -33,14 +49,18 @@ let hlsInstance: Hls | null = null
 /**
  * Inicializa o stream em um elemento <video>.
  * Gerencia automaticamente a instância do hls.js.
+ *
+ * @param onError  Callback chamado quando ocorre um erro fatal no stream
  */
 export function attachStream(
   video: HTMLVideoElement,
   url: string,
   proxyUrl = '',
-): void {
-  const finalUrl = applyProxy(url, proxyUrl)
-  const type = detectStreamType(url)
+  onError?: (message: string) => void,
+): Hls | null {
+  const normalizedUrl = normalizeStreamUrl(url)
+  const finalUrl = prepareUrl(normalizedUrl, Boolean(proxyUrl), proxyUrl)
+  const type = detectStreamType(normalizedUrl)
 
   destroyStream()
 
@@ -56,10 +76,17 @@ export function attachStream(
         // Autoplay pode ser bloqueado pelo browser; ignorar silenciosamente
       })
     })
+    hlsInstance.on(Hls.Events.ERROR, (_event, data) => {
+      if (data.fatal) {
+        onError?.(`Erro fatal no stream HLS: ${data.type} — ${data.details}`)
+      }
+    })
+    return hlsInstance
   } else {
     // Fallback para vídeo nativo (MPEG-TS via MSE, MP4, etc.)
     video.src = finalUrl
     video.play().catch(() => {})
+    return null
   }
 }
 
