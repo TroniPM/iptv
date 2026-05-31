@@ -97,6 +97,15 @@ export function attachStream(
     hlsInstance = new Hls({
       enableWorker: true,
       lowLatencyMode: false,
+      // Intercepta TODAS as requisições do hls.js (manifesto + segmentos + chaves).
+      // Sem isso, apenas a URL do manifesto seria proxiada; os segmentos
+      // continuariam sendo buscados diretamente em HTTP e seriam bloqueados.
+      xhrSetup(xhr, segmentUrl) {
+        const adjusted = prepareUrl(segmentUrl, useProxy, proxyUrl, forceHttps)
+        if (adjusted !== segmentUrl) {
+          xhr.open('GET', adjusted, true)
+        }
+      },
     })
     hlsInstance.loadSource(finalUrl)
     hlsInstance.attachMedia(video)
