@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { useRoute } from 'vue-router'
 import { usePlaylistStore } from '@/stores/playlist'
 import { useSettingsStore } from '@/stores/settings'
 import { useFavoritesStore } from '@/stores/favorites'
@@ -15,6 +16,9 @@ const props = defineProps<{
 const emit = defineEmits<{
   'play-channel': [channel: Channel]
 }>()
+
+const route = useRoute()
+const isPlayerRoute = computed(() => route.name === 'player')
 
 // ─── Stores ───────────────────────────────────────────────────────────────────
 const playlistStore = usePlaylistStore()
@@ -288,6 +292,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', onWindowResize))
 <template>
   <!-- Botão flutuante (toggle + drag handle) -->
   <div
+    v-show="isPlayerRoute"
     ref="btnEl"
     class="fixed z-50 select-none"
     :style="{ left: pos.x + 'px', top: pos.y + 'px' }"
