@@ -85,7 +85,41 @@ Escolha o idioma da interface. Atualmente suportados: **Português (Brasil)** e 
 ### Diversos
 
 - **Agrupamento de canais** — quando ativado, os canais no player são organizados em grupos (categorias) do seu arquivo M3U. Quando desativado, todos os canais aparecem em lista plana.
+- **Forçar HTTPS nos streams** — substitui `http://` por `https://` em todas as URLs de canais antes de reproduzir. Útil quando o app está hospedado em HTTPS (ex: GitHub Pages) e os streams usam HTTP. Só funciona se o servidor IPTV também aceitar conexões HTTPS.
 - **Proxy CORS** — alguns streams bloqueiam requisições diretas do navegador por restrições de CORS. Você pode ativar um proxy e informar a URL de um serviço de proxy CORS para contornar isso. O proxy é aplicado tanto na reprodução dos streams quanto no download de listas M3U por URL.
+
+---
+
+### Reproduzindo streams HTTP em uma página HTTPS (Mixed Content)
+
+Quando o app está hospedado em HTTPS (ex: GitHub Pages), os navegadores bloqueiam por padrão as requisições para URLs de stream em HTTP. Isso é chamado de **Mixed Content**. Existem algumas formas de contornar:
+
+**Opção 1 — Forçar HTTPS (mais simples, pode não funcionar)**
+
+Ative **Forçar HTTPS nos streams** em Configurações → Diversos. Isso converte `http://` para `https://` automaticamente. Funciona apenas se o servidor IPTV suportar HTTPS.
+
+**Opção 2 — Permitir conteúdo inseguro no Chrome/Edge (recomendado para uso pessoal)**
+
+O Chrome e o Edge permitem liberar conteúdo inseguro para um site específico sem afetar nada mais:
+
+1. Abra o app no navegador.
+2. Clique no **cadeado / ícone de informações** na barra de endereço.
+3. Clique em **Configurações do site**.
+4. Role até **Conteúdo inseguro**.
+5. Mude de **Bloquear** para **Permitir**.
+6. Recarregue a página.
+
+Essa configuração fica salva permanentemente para aquele domínio e não afeta outros sites.
+
+**Opção 3 — Proxy CORS (funciona para todos os usuários, sem alterar o navegador)**
+
+Faça o deploy de um servidor proxy que busca os streams HTTP em nome do navegador e os retorna via HTTPS. O arquivo `proxy/worker.js` neste repositório é um [Cloudflare Worker](https://workers.cloudflare.com/) pronto para deploy (plano gratuito: 100.000 requisições/dia, sem cartão de crédito):
+
+1. Acesse [dash.cloudflare.com](https://dash.cloudflare.com) → **Workers & Pages → Create**.
+2. Cole o conteúdo do `proxy/worker.js` e clique em **Deploy**.
+3. Copie a URL gerada (ex: `https://iptv-proxy.SEU_USUARIO.workers.dev`).
+4. No app → Configurações → **Proxy CORS**, cole: `https://iptv-proxy.SEU_USUARIO.workers.dev/?url=`
+5. Ative o toggle **Proxy CORS**.
 
 ---
 
