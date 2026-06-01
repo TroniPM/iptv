@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" fill="none">
+  <!-- Background -->
+  <rect width="1200" height="630" fill="#0f0f0f"/>
+
+  <!-- Purple glow left blob -->
+  <ellipse cx="200" cy="315" rx="300" ry="260" fill="#863bff" fill-opacity="0.08"/>
+
+  <!-- TV icon group (left side) -->
+  <g transform="translate(140, 175)">
+    <!-- TV frame -->
+    <rect x="0" y="0" width="280" height="186" rx="18" fill="#863bff"/>
+    <!-- Screen -->
+    <rect x="12" y="12" width="256" height="152" rx="8" fill="#1a0a2e"/>
+    <!-- Play button -->
+    <polygon points="100,46 100,120 190,83" fill="#863bff"/>
+    <!-- Antenna left -->
+    <line x1="90" y1="0" x2="55" y2="-38" stroke="#863bff" stroke-width="10" stroke-linecap="round"/>
+    <!-- Antenna right -->
+    <line x1="190" y1="0" x2="225" y2="-38" stroke="#863bff" stroke-width="10" stroke-linecap="round"/>
+    <!-- Stand neck -->
+    <rect x="122" y="186" width="36" height="26" rx="4" fill="#863bff"/>
+    <!-- Stand base -->
+    <rect x="80" y="212" width="120" height="20" rx="10" fill="#863bff"/>
+  </g>
+
+  <!-- Divider line -->
+  <rect x="490" y="140" width="2" height="350" fill="#863bff" fill-opacity="0.3"/>
+
+  <!-- Text group (right side) -->
+  <g font-family="system-ui, -apple-system, sans-serif" fill="#f1f1f1">
+    <!-- Label -->
+    <text x="540" y="195" font-size="22" fill="#863bff" font-weight="600" letter-spacing="4">OPEN SOURCE</text>
+
+    <!-- Main title -->
+    <text x="540" y="280" font-size="80" font-weight="800" fill="#f1f1f1">IPTV</text>
+    <text x="540" y="360" font-size="80" font-weight="800" fill="#863bff">Player</text>
+
+    <!-- Description -->
+    <text x="540" y="420" font-size="24" fill="#a0a0a0">Watch live TV directly in your browser.</text>
+    <text x="540" y="454" font-size="24" fill="#a0a0a0">No account. No install. Just a M3U playlist.</text>
+
+    <!-- URL -->
+    <text x="540" y="520" font-size="20" fill="#863bff" fill-opacity="0.8">tronipm.github.io/iptv</text>
+  </g>
+
+  <!-- Bottom accent bar -->
+  <rect x="0" y="610" width="1200" height="4" fill="#863bff"/>
+</svg>

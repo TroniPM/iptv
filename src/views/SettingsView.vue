@@ -40,6 +40,23 @@ async function saveProxy() {
   await settingsStore.save({ proxyUrl: proxyDraft.value.trim() })
 }
 
+// ─── Detecção de browser ──────────────────────────────────────────────────────
+const isEdge = navigator.userAgent.includes('Edg/')
+const isChrome = !isEdge && navigator.userAgent.includes('Chrome')
+const insecureContentUrl = isEdge
+  ? 'edge://settings/privacy/sitePermissions/allSites/siteDetails?site=https%3A%2F%2Ftronipm.github.io'
+  : 'chrome://settings/content/siteDetails?site=https%3A%2F%2Ftronipm.github.io'
+const copySuccess = ref(false)
+let copyTimer: ReturnType<typeof setTimeout> | null = null
+
+function copyInsecureUrl() {
+  navigator.clipboard.writeText(insecureContentUrl).then(() => {
+    if (copyTimer) clearTimeout(copyTimer)
+    copySuccess.value = true
+    copyTimer = setTimeout(() => { copySuccess.value = false }, 2000)
+  })
+}
+
 // ─── Modal de importação ──────────────────────────────────────────────────────
 const showImportModal = ref(false)
 const importTab = ref<'url' | 'file'>('url')
@@ -397,6 +414,32 @@ onMounted(async () => {
               <p class="text-xs text-zinc-500 mt-0.5">{{ t('settings.forceHttps.desc') }}</p>
             </div>
             <AppToggle :model-value="settingsStore.forceHttps" @update:model-value="settingsStore.toggleForceHttps" />
+          </div>
+
+          <!-- Aviso: outro navegador não suporta configuração de conteúdo inseguro por site -->
+          <div v-if="!isChrome && !isEdge" class="rounded-lg bg-amber-950/40 border border-amber-700/50 p-3">
+            <p class="text-xs text-amber-400">💡 {{ t('settings.insecureContent.otherBrowser') }}</p>
+          </div>
+
+          <!-- Dica: Conteúdo não seguro (Chrome / Edge) -->
+          <div v-if="isChrome || isEdge" class="rounded-lg bg-zinc-900 border border-zinc-700/50 p-3 space-y-2">
+            <p class="text-xs font-medium text-zinc-300">{{ t('settings.insecureContent.title') }}</p>
+            <p class="text-xs text-zinc-500">{{ t('settings.insecureContent.desc') }}</p>
+            <ol class="text-xs text-zinc-500 list-decimal list-inside space-y-0.5 pl-1">
+              <li>{{ t('settings.insecureContent.step1') }}</li>
+              <li>{{ t('settings.insecureContent.step2') }}</li>
+              <li>{{ t('settings.insecureContent.step3') }}</li>
+            </ol>
+            <div class="flex items-center gap-2 pt-1">
+              <span class="text-xs text-zinc-500 shrink-0">{{ t('settings.insecureContent.openUrl') }}</span>
+              <code class="flex-1 min-w-0 bg-zinc-800 rounded px-2 py-1 text-zinc-400 text-xs break-all">{{ insecureContentUrl }}</code>
+              <button
+                class="shrink-0 px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-xs transition-colors"
+                @click="copyInsecureUrl"
+              >
+                {{ copySuccess ? t('settings.insecureContent.copied') : t('settings.insecureContent.copy') }}
+              </button>
+            </div>
           </div>
 
           <!-- Proxy -->

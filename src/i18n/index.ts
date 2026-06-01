@@ -42,6 +42,15 @@ const UI_TRANSLATIONS: Record<Locale, Record<string, string>> = {
     'settings.lists.title':          'Minhas Listas',
     'settings.forceHttps.title':     'Forçar HTTPS nos Streams',
     'settings.forceHttps.desc':      'Substitui http:// por https:// nas URLs dos canais. Resolve o bloqueio de Mixed Content no GitHub Pages e outros sites HTTPS. Pode falhar em servidores que não suportam HTTPS.',
+    'settings.insecureContent.title':  'Alternativa: Permitir Conteúdo Não Seguro',
+    'settings.insecureContent.desc':   'Se o Forçar HTTPS não resolver, você pode liberar conteúdo não seguro diretamente nas configurações do Chrome ou Edge:',
+    'settings.insecureContent.step1':  'Abra a URL de configurações abaixo no seu navegador (copie e cole na barra de endereços).',
+    'settings.insecureContent.step2':  'Localize a opção "Conteúdo não seguro".',
+    'settings.insecureContent.step3':  'Altere para "Permitir".',
+    'settings.insecureContent.openUrl': 'URL:',
+    'settings.insecureContent.copy':   'Copiar',
+    'settings.insecureContent.copied': 'Copiado!',
+    'settings.insecureContent.otherBrowser': 'Dica: se você usar o Chrome ou Microsoft Edge, é possível permitir conteúdo não seguro especificamente para este site, sem precisar do proxy.',
 
     // Player — erros de stream
     'player.stream.error.init':             'Falha ao inicializar o stream.',
@@ -197,6 +206,15 @@ const UI_TRANSLATIONS: Record<Locale, Record<string, string>> = {
     'settings.lists.title':          'My Playlists',
     'settings.forceHttps.title':     'Force HTTPS on Streams',
     'settings.forceHttps.desc':      'Replaces http:// with https:// in channel URLs. Fixes Mixed Content blocking on GitHub Pages and other HTTPS sites. May fail on servers that do not support HTTPS.',
+    'settings.insecureContent.title':  'Alternative: Allow Insecure Content',
+    'settings.insecureContent.desc':   'If Force HTTPS does not work, you can allow insecure content directly in Chrome or Edge settings:',
+    'settings.insecureContent.step1':  'Open the settings URL below in your browser (copy and paste into the address bar).',
+    'settings.insecureContent.step2':  'Find the "Insecure content" option.',
+    'settings.insecureContent.step3':  'Set it to "Allow".',
+    'settings.insecureContent.openUrl': 'URL:',
+    'settings.insecureContent.copy':   'Copy',
+    'settings.insecureContent.copied': 'Copied!',
+    'settings.insecureContent.otherBrowser': 'Tip: if you use Chrome or Microsoft Edge, you can allow insecure content specifically for this site, without needing a proxy.',
 
     // Player — stream errors
     'player.stream.error.init':             'Failed to initialize the stream.',
