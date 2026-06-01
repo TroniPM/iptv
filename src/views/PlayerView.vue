@@ -6,7 +6,7 @@ import { useSettingsStore } from '@/stores/settings'
 import { useFavoritesStore } from '@/stores/favorites'
 import { useHistoryStore } from '@/stores/history'
 import { useEpgStore } from '@/stores/epg'
-import { attachStream, destroyStream, isValidStreamUrl, isMixedContent } from '@/services/stream'
+import { attachStream, destroyStream, isValidStreamUrl } from '@/services/stream'
 import { useI18n } from '@/i18n'
 import type { Channel, ChannelGroup, HlsStats, EpgProgram } from '@/types'
 
