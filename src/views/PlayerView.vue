@@ -206,11 +206,11 @@ function playChannel(channel: Channel) {
     return
   }
 
-  if (isMixedContent(channel.url) && !settingsStore.proxyEnabled && !settingsStore.forceHttps) {
-    isLoading.value = false
-    streamError.value = t('player.stream.error.mixedContent')
-    return
-  }
+  // if (isMixedContent(channel.url) && !settingsStore.proxyEnabled && !settingsStore.forceHttps) {
+  //   isLoading.value = false
+  //   streamError.value = t('player.stream.error.mixedContent')
+  //   return
+  // }
 
   try {
     const hls = attachStream(
