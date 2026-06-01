@@ -62,6 +62,44 @@ export function prepareUrl(url: string, useProxy = false, proxyBaseUrl = '', for
   return `${proxyBaseUrl}${encodeURIComponent(prepared)}`
 }
 
+// ─── Verificação de saúde de canal ──────────────────────────────────────────
+
+/**
+ * Testa se a URL de um canal responde dentro do timeout configurado.
+ * Usa HEAD request (ou GET como fallback) com AbortController.
+ * Retorna true se online, false se offline/timeout.
+ *
+ * @param url          URL do stream a testar
+ * @param timeoutMs    Timeout em milissegundos (padrão 8000, máx 15000)
+ * @param useProxy     Se deve aplicar proxy CORS
+ * @param proxyBaseUrl URL-base do proxy
+ * @param forceHttps   Se deve substituir http:// por https://
+ */
+export async function checkChannelUrl(
+  url: string,
+  timeoutMs = 8000,
+  useProxy = false,
+  proxyBaseUrl = '',
+  forceHttps = false,
+): Promise<boolean> {
+  const clampedTimeout = Math.min(Math.max(timeoutMs, 1000), 15000)
+  const prepared = prepareUrl(url, useProxy, proxyBaseUrl, forceHttps)
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), clampedTimeout)
+  try {
+    const res = await fetch(prepared, {
+      method: 'HEAD',
+      signal: controller.signal,
+      cache: 'no-store',
+    })
+    return res.ok || res.status < 500
+  } catch {
+    return false
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 // ─── Montagem / desmontagem do player HLS ────────────────────────────────────
 
 let hlsInstance: Hls | null = null

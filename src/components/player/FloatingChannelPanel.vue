@@ -109,6 +109,21 @@ const favoriteChannels = computed(() =>
   favoritesStore.getFavoriteChannels(playlistStore.channels),
 )
 
+// ─── Classe de linha de canal ─────────────────────────────────────────────────
+function channelRowClass(ch: Channel, isSelected: boolean): string {
+  if (ch.isOffline) {
+    return 'opacity-50 cursor-not-allowed text-zinc-600 border-l-2 border-transparent'
+  }
+  return isSelected
+    ? 'bg-indigo-600/20 text-indigo-300 border-l-2 border-indigo-500 cursor-pointer'
+    : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 border-l-2 border-transparent cursor-pointer'
+}
+
+function handleChannelClick(ch: Channel) {
+  if (ch.isOffline) return
+  emit('play-channel', ch)
+}
+
 // ─── Drag do botão (Pointer Events) ──────────────────────────────────────────
 const isDragging = ref(false)
 let dragStartX = 0
@@ -404,21 +419,23 @@ onBeforeUnmount(() => window.removeEventListener('resize', onWindowResize))
                 <div
                   v-for="ch in group.channels"
                   :key="ch.id"
-                  class="w-full flex items-center gap-2 px-4 py-2 text-sm transition-colors cursor-pointer"
-                  :class="playlistStore.selectedChannel?.id === ch.id
-                    ? 'bg-indigo-600/20 text-indigo-300 border-l-2 border-indigo-500'
-                    : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 border-l-2 border-transparent'"
-                  @click="emit('play-channel', ch)"
+                  class="w-full flex items-center gap-2 px-4 py-2 text-sm transition-colors"
+                  :class="channelRowClass(ch, playlistStore.selectedChannel?.id === ch.id)"
+                  @click="handleChannelClick(ch)"
                 >
                   <img v-if="ch.logo" :src="ch.logo" class="w-5 h-5 object-contain rounded shrink-0" alt="" />
                   <div v-else class="w-5 h-5 bg-zinc-700 rounded shrink-0" />
                   <div class="flex-1 min-w-0">
-                    <div class="truncate">{{ ch.name }}</div>
+                    <div class="truncate flex items-center gap-1.5">
+                      <span class="truncate">{{ ch.name }}</span>
+                      <span v-if="ch.isOffline" class="shrink-0 text-[9px] font-semibold uppercase tracking-wide bg-red-900/60 text-red-400 border border-red-700/50 px-1 py-0.5 rounded">offline</span>
+                    </div>
                     <div v-if="ch.tvgId && props.currentProgramIds.get(ch.tvgId)" class="text-[10px] text-zinc-600 truncate">
                       {{ props.currentProgramIds.get(ch.tvgId)?.title }}
                     </div>
                   </div>
                   <button
+                    v-if="!ch.isOffline"
                     class="shrink-0 text-base leading-none transition-colors"
                     :class="favoritesStore.isFavorite(ch.id!) ? 'text-yellow-400' : 'text-zinc-700 hover:text-zinc-400'"
                     :aria-label="favoritesStore.isFavorite(ch.id!) ? 'Remover favorito' : 'Adicionar favorito'"
@@ -434,21 +451,23 @@ onBeforeUnmount(() => window.removeEventListener('resize', onWindowResize))
             <div
               v-for="ch in playlistStore.filteredChannels"
               :key="ch.id"
-              class="w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer"
-              :class="playlistStore.selectedChannel?.id === ch.id
-                ? 'bg-indigo-600/20 text-indigo-300 border-l-2 border-indigo-500'
-                : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 border-l-2 border-transparent'"
-              @click="emit('play-channel', ch)"
+              class="w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors"
+              :class="channelRowClass(ch, playlistStore.selectedChannel?.id === ch.id)"
+              @click="handleChannelClick(ch)"
             >
               <img v-if="ch.logo" :src="ch.logo" class="w-5 h-5 object-contain rounded shrink-0" alt="" />
               <div v-else class="w-5 h-5 bg-zinc-700 rounded shrink-0" />
               <div class="flex-1 min-w-0">
-                <div class="truncate">{{ ch.name }}</div>
+                <div class="truncate flex items-center gap-1.5">
+                  <span class="truncate">{{ ch.name }}</span>
+                  <span v-if="ch.isOffline" class="shrink-0 text-[9px] font-semibold uppercase tracking-wide bg-red-900/60 text-red-400 border border-red-700/50 px-1 py-0.5 rounded">offline</span>
+                </div>
                 <div v-if="ch.tvgId && props.currentProgramIds.get(ch.tvgId)" class="text-[10px] text-zinc-600 truncate">
                   {{ props.currentProgramIds.get(ch.tvgId)?.title }}
                 </div>
               </div>
               <button
+                v-if="!ch.isOffline"
                 class="shrink-0 text-base leading-none transition-colors"
                 :class="favoritesStore.isFavorite(ch.id!) ? 'text-yellow-400' : 'text-zinc-700 hover:text-zinc-400'"
                 @click.stop="favoritesStore.toggleFavorite(ch)"
@@ -468,16 +487,18 @@ onBeforeUnmount(() => window.removeEventListener('resize', onWindowResize))
             <div
               v-for="ch in favoriteChannels"
               :key="ch.id"
-              class="w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer"
-              :class="playlistStore.selectedChannel?.id === ch.id
-                ? 'bg-indigo-600/20 text-indigo-300 border-l-2 border-indigo-500'
-                : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 border-l-2 border-transparent'"
-              @click="emit('play-channel', ch)"
+              class="w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors"
+              :class="channelRowClass(ch, playlistStore.selectedChannel?.id === ch.id)"
+              @click="handleChannelClick(ch)"
             >
               <img v-if="ch.logo" :src="ch.logo" class="w-5 h-5 object-contain rounded shrink-0" alt="" />
               <div v-else class="w-5 h-5 bg-zinc-700 rounded shrink-0" />
-              <span class="truncate flex-1">{{ ch.name }}</span>
+              <div class="truncate flex-1 flex items-center gap-1.5">
+                <span class="truncate">{{ ch.name }}</span>
+                <span v-if="ch.isOffline" class="shrink-0 text-[9px] font-semibold uppercase tracking-wide bg-red-900/60 text-red-400 border border-red-700/50 px-1 py-0.5 rounded">offline</span>
+              </div>
               <button
+                v-if="!ch.isOffline"
                 class="shrink-0 text-base text-yellow-400 leading-none"
                 @click.stop="favoritesStore.toggleFavorite(ch)"
               >★</button>
@@ -503,18 +524,28 @@ onBeforeUnmount(() => window.removeEventListener('resize', onWindowResize))
               v-for="entry in historyStore.entries"
               :key="entry.id"
               class="w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors"
-              :class="playlistStore.selectedChannel?.id === entry.channelId
-                ? 'bg-indigo-600/20 text-indigo-300 border-l-2 border-indigo-500'
-                : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 border-l-2 border-transparent'"
+              :class="(() => {
+                const ch = playlistStore.channels.find((c: Channel) => c.id === entry.channelId)
+                if (ch?.isOffline) return 'opacity-50 cursor-not-allowed text-zinc-600 border-l-2 border-transparent'
+                return playlistStore.selectedChannel?.id === entry.channelId
+                  ? 'bg-indigo-600/20 text-indigo-300 border-l-2 border-indigo-500 cursor-pointer'
+                  : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 border-l-2 border-transparent cursor-pointer'
+              })()"
               @click="() => {
                 const ch = playlistStore.channels.find((c: Channel) => c.id === entry.channelId)
-                if (ch) emit('play-channel', ch)
+                if (ch && !ch.isOffline) emit('play-channel', ch)
               }"
             >
               <img v-if="entry.channelLogo" :src="entry.channelLogo" class="w-5 h-5 object-contain rounded shrink-0" alt="" />
               <div v-else class="w-5 h-5 bg-zinc-700 rounded shrink-0" />
               <div class="flex-1 min-w-0">
-                <div class="truncate">{{ entry.channelName }}</div>
+                <div class="truncate flex items-center gap-1.5">
+                  <span class="truncate">{{ entry.channelName }}</span>
+                  <span
+                    v-if="playlistStore.channels.find((c: Channel) => c.id === entry.channelId)?.isOffline"
+                    class="shrink-0 text-[9px] font-semibold uppercase tracking-wide bg-red-900/60 text-red-400 border border-red-700/50 px-1 py-0.5 rounded"
+                  >offline</span>
+                </div>
                 <div class="text-[10px] text-zinc-600">{{ entry.channelGroup }}</div>
               </div>
               <span class="shrink-0 text-[10px] text-zinc-600">{{ relativeTime(entry.watchedAt) }}</span>

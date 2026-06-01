@@ -331,6 +331,29 @@ function formatEpgDate(date: Date | null): string {
   return new Date(date).toLocaleString()
 }
 
+// ─── Health Check ─────────────────────────────────────────────────────────────
+const healthCheckPlaylistId = ref<number | null>(null)
+const healthCheckTimeout = ref(8)
+const healthCheckConcurrency = ref(5)
+const healthCheckAutoHide = ref(false)
+
+async function startHealthCheck() {
+  if (!healthCheckPlaylistId.value) return
+  await playlistStore.runHealthCheck(healthCheckPlaylistId.value, healthCheckTimeout.value * 1000, healthCheckConcurrency.value)
+  if (healthCheckAutoHide.value && playlistStore.healthCheck.offlineCount > 0) {
+    await playlistStore.hideOfflineChannels(healthCheckPlaylistId.value)
+  }
+}
+
+function stopHealthCheck() {
+  playlistStore.stopHealthCheck()
+}
+
+async function hideOffline() {
+  if (!healthCheckPlaylistId.value) return
+  await playlistStore.hideOfflineChannels(healthCheckPlaylistId.value)
+}
+
 // ─── Init ─────────────────────────────────────────────────────────────────────
 onMounted(async () => {
   await settingsStore.load()
@@ -550,6 +573,126 @@ onMounted(async () => {
             </div>
             <p v-if="epgStore.error" class="text-xs text-red-400">{{ epgStore.error }}</p>
           </div>
+        </div>
+      </section>
+
+      <!-- ── Seção: Verificação de Saúde dos Canais ──────────────── -->
+      <section class="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+        <div class="px-5 py-4 border-b border-zinc-800">
+          <h2 class="text-sm font-semibold text-zinc-200">{{ t('settings.healthCheck.title') }}</h2>
+          <p class="text-xs text-zinc-500 mt-0.5">{{ t('settings.healthCheck.description') }}</p>
+        </div>
+        <div class="p-5 space-y-4">
+          <!-- Sem playlists -->
+          <p v-if="playlistStore.playlists.length === 0" class="text-xs text-zinc-500">
+            {{ t('settings.healthCheck.noPlaylist') }}
+          </p>
+
+          <template v-else>
+            <!-- Seletor de playlist + timeout + concorrência -->
+            <div class="flex flex-wrap gap-3 items-end">
+              <div class="flex-1 min-w-40">
+                <label class="block text-xs text-zinc-400 mb-1">{{ t('settings.healthCheck.selectPlaylist') }}</label>
+                <select
+                  v-model="healthCheckPlaylistId"
+                  :disabled="playlistStore.healthCheck.status === 'running'"
+                  class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 disabled:opacity-50"
+                >
+                  <option :value="null" disabled>—</option>
+                  <option v-for="pl in playlistStore.playlists" :key="pl.id" :value="pl.id">{{ pl.name }}</option>
+                </select>
+              </div>
+              <div class="w-28">
+                <label class="block text-xs text-zinc-400 mb-1">{{ t('settings.healthCheck.timeout') }}</label>
+                <input
+                  v-model.number="healthCheckTimeout"
+                  type="number"
+                  min="1"
+                  max="15"
+                  :disabled="playlistStore.healthCheck.status === 'running'"
+                  class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 disabled:opacity-50"
+                />
+              </div>
+              <div class="w-28">
+                <label class="block text-xs text-zinc-400 mb-1">{{ t('settings.healthCheck.concurrency') }}</label>
+                <input
+                  v-model.number="healthCheckConcurrency"
+                  type="number"
+                  min="1"
+                  max="15"
+                  :disabled="playlistStore.healthCheck.status === 'running'"
+                  class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 disabled:opacity-50"
+                />
+              </div>
+            </div>
+
+            <!-- Auto hide toggle -->
+            <div class="flex items-center gap-3">
+              <AppToggle
+                :model-value="healthCheckAutoHide"
+                :disabled="playlistStore.healthCheck.status === 'running'"
+                @update:model-value="healthCheckAutoHide = $event"
+              />
+              <span class="text-sm text-zinc-300">{{ t('settings.healthCheck.autoHide') }}</span>
+            </div>
+
+            <!-- Botões iniciar/parar -->
+            <div class="flex gap-2">
+              <AppButton
+                v-if="playlistStore.healthCheck.status !== 'running'"
+                :disabled="!healthCheckPlaylistId"
+                @click="startHealthCheck"
+              >
+                {{ t('settings.healthCheck.start') }}
+              </AppButton>
+              <AppButton
+                v-else
+                variant="danger"
+                @click="stopHealthCheck"
+              >
+                {{ t('settings.healthCheck.stop') }}
+              </AppButton>
+            </div>
+
+            <!-- Progresso -->
+            <div v-if="playlistStore.healthCheck.status !== 'idle'" class="space-y-2">
+              <p class="text-xs text-zinc-400">
+                {{ tParam('settings.healthCheck.progress', {
+                  checked: String(playlistStore.healthCheck.checked),
+                  total: String(playlistStore.healthCheck.total)
+                }) }}
+              </p>
+              <div class="w-full bg-zinc-800 rounded-full h-1.5">
+                <div
+                  class="bg-indigo-500 h-1.5 rounded-full transition-all duration-300"
+                  :style="{
+                    width: playlistStore.healthCheck.total > 0
+                      ? `${(playlistStore.healthCheck.checked / playlistStore.healthCheck.total) * 100}%`
+                      : '0%'
+                  }"
+                />
+              </div>
+            </div>
+
+            <!-- Resultado -->
+            <div v-if="playlistStore.healthCheck.status === 'done'" class="space-y-3">
+              <p class="text-xs text-zinc-400">
+                {{ t('settings.healthCheck.done') }}
+                {{
+                  playlistStore.healthCheck.offlineCount > 0
+                    ? tParam('settings.healthCheck.offlineFound', { count: String(playlistStore.healthCheck.offlineCount) })
+                    : t('settings.healthCheck.noneOffline')
+                }}
+              </p>
+              <AppButton
+                v-if="playlistStore.healthCheck.offlineCount > 0"
+                variant="secondary"
+                @click="hideOffline"
+              >
+                {{ tParam('settings.healthCheck.hideButton', { count: String(playlistStore.healthCheck.offlineCount) }) }}
+              </AppButton>
+            </div>
+          </template>
         </div>
       </section>
 

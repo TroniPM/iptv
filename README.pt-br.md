@@ -169,12 +169,8 @@ As funcionalidades abaixo ainda não foram implementadas ou foram implementadas 
 |---|---|
 | Contas de usuário | Diferentes listas de canais e configurações para usuários distintos no mesmo dispositivo. |
 | Atualização automática de listas por URL | Re-baixar listas importadas via URL em um intervalo configurável. |
-| Verificação de saúde dos canais | Testar cada URL de canal e marcar os que estão offline ou quebrados. |
-| Atalhos de teclado | Controlar a reprodução (play/pause, mudo, tela cheia) e navegar entre canais pelo teclado. |
-| Modo telão / kiosk | Ocultar toda a interface em tela cheia, deixando apenas o vídeo. |
 | Exportar lista como M3U | Exportar uma lista filtrada ou personalizada de volta como arquivo M3U. |
 | Xtream Codes API | Importar listas usando credenciais de servidor Xtream (usuário, senha, host) em vez de uma URL M3U direta. |
-| Importação por QR code | Ler uma URL de lista M3U via câmera usando QR code. |
 | Alternância de tema claro/escuro | Atualmente o app só tem tema escuro. |
 | Barra de progresso na importação | Exibir indicador de progresso ao carregar listas grandes. |
 | `<html lang>` dinâmico | Atualizar o atributo de idioma da página quando o usuário mudar o idioma nas configurações. |

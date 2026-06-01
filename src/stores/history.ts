@@ -51,10 +51,17 @@ export const useHistoryStore = defineStore('history', () => {
     entries.value = []
   }
 
+  async function removeByChannelIds(channelIds: number[]): Promise<void> {
+    if (channelIds.length === 0) return
+    await db.history.where('channelId').anyOf(channelIds).delete()
+    entries.value = entries.value.filter((e: HistoryEntry) => !channelIds.includes(e.channelId))
+  }
+
   return {
     entries,
     loadHistory,
     addEntry,
     clearHistory,
+    removeByChannelIds,
   }
 })

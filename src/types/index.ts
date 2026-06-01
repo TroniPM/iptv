@@ -30,6 +30,8 @@ export interface Channel {
   tvgName: string
   /** URL do stream (HLS, MPEG-TS, etc.) */
   url: string
+  /** Marcado como offline pela verificação de saúde. undefined = não verificado */
+  isOffline?: boolean
 }
 
 // ─── Grupo de canais (resultado do Agrupamento Inteligente) ──────────────────

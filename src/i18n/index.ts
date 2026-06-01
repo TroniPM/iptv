@@ -119,6 +119,23 @@ const UI_TRANSLATIONS: Record<Locale, Record<string, string>> = {
     'settings.epg.noSources':        'Nenhuma fonte EPG adicionada.',
     'settings.epg.namePlaceholder':  'Ex: EPG Brasil',
     'settings.epg.urlPlaceholder':   'https://exemplo.com/epg.xml',
+
+    // Verificação de saúde dos canais
+    'settings.healthCheck.title':            'Verificação de Saúde dos Canais',
+    'settings.healthCheck.description':      'Testa cada canal da lista selecionada e marca os que não respondem como offline.',
+    'settings.healthCheck.selectPlaylist':   'Selecione uma lista para verificar',
+    'settings.healthCheck.timeout':          'Timeout por canal (segundos)',
+    'settings.healthCheck.concurrency':      'Verificações simultâneas',
+    'settings.healthCheck.start':            'Iniciar verificação',
+    'settings.healthCheck.stop':             'Parar verificação',
+    'settings.healthCheck.progress':         '{checked} de {total} canais verificados',
+    'settings.healthCheck.done':             'Verificação concluída.',
+    'settings.healthCheck.offlineFound':     '{count} canal(is) offline encontrado(s).',
+    'settings.healthCheck.noneOffline':      'Todos os canais responderam.',
+    'settings.healthCheck.autoHide':         'Ocultar offline automaticamente ao concluir',
+    'settings.healthCheck.hideButton':       'Ocultar canais offline ({count})',
+    'settings.healthCheck.noPlaylist':       'Nenhuma lista disponível.',
+
     'manage.import.button':          '+ Importar Lista',
     'manage.empty.line1':            'Nenhuma lista importada.',
     'manage.empty.line2':            'Clique em "Importar Lista" para começar.',
@@ -282,6 +299,22 @@ const UI_TRANSLATIONS: Record<Locale, Record<string, string>> = {
     'settings.epg.noSources':        'No EPG source added.',
     'settings.epg.namePlaceholder':  'E.g.: US EPG',
     'settings.epg.urlPlaceholder':   'https://example.com/epg.xml',
+
+    // Channel health check
+    'settings.healthCheck.title':            'Channel Health Check',
+    'settings.healthCheck.description':      'Tests each channel in the selected playlist and marks unresponsive ones as offline.',
+    'settings.healthCheck.selectPlaylist':   'Select a playlist to check',
+    'settings.healthCheck.timeout':          'Timeout per channel (seconds)',
+    'settings.healthCheck.concurrency':      'Simultaneous checks',
+    'settings.healthCheck.start':            'Start check',
+    'settings.healthCheck.stop':             'Stop check',
+    'settings.healthCheck.progress':         '{checked} of {total} channels checked',
+    'settings.healthCheck.done':             'Check completed.',
+    'settings.healthCheck.offlineFound':     '{count} offline channel(s) found.',
+    'settings.healthCheck.noneOffline':      'All channels responded.',
+    'settings.healthCheck.autoHide':         'Automatically hide offline channels when done',
+    'settings.healthCheck.hideButton':       'Hide offline channels ({count})',
+    'settings.healthCheck.noPlaylist':       'No playlist available.',
 
     // Manage playlists — header & table
     'manage.title':                  'My M3U Playlists',

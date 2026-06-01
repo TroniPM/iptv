@@ -2,8 +2,9 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { db } from '@/database/db'
 import { parseM3U, groupChannels, filterChannels } from '@/services/m3uParser'
-import { prepareUrl } from '@/services/stream'
+import { prepareUrl, checkChannelUrl } from '@/services/stream'
 import { useSettingsStore } from '@/stores/settings'
+import { useHistoryStore } from '@/stores/history'
 import type { Playlist, Channel, ChannelGroup } from '@/types'
 
 export const usePlaylistStore = defineStore('playlist', () => {
@@ -17,6 +18,21 @@ export const usePlaylistStore = defineStore('playlist', () => {
   const searchQuery = ref('')
   const isLoading = ref(false)
   const error = ref<string | null>(null)
+
+  // ─── Health Check State ──────────────────────────────────────────────────────
+  const healthCheck = ref<{
+    status: 'idle' | 'running' | 'done'
+    checked: number
+    total: number
+    offlineCount: number
+    abortController: AbortController | null
+  }>({
+    status: 'idle',
+    checked: 0,
+    total: 0,
+    offlineCount: 0,
+    abortController: null,
+  })
 
   // ─── Getters ────────────────────────────────────────────────────────────────
   const filteredChannels = computed(() =>
@@ -131,6 +147,94 @@ export const usePlaylistStore = defineStore('playlist', () => {
     }
   }
 
+  // ─── Health Check ────────────────────────────────────────────────────────────
+
+  async function runHealthCheck(playlistId: number, timeoutMs = 8000, concurrency = 5): Promise<void> {
+    const channelsToCheck = await db.channels.where('playlistId').equals(playlistId).toArray()
+    if (channelsToCheck.length === 0) return
+
+    const controller = new AbortController()
+    healthCheck.value = {
+      status: 'running',
+      checked: 0,
+      total: channelsToCheck.length,
+      offlineCount: 0,
+      abortController: controller,
+    }
+
+    // Zera isOffline de todos antes de verificar
+    await db.channels.where('playlistId').equals(playlistId).modify({ isOffline: false })
+    channels.value = channels.value.map(ch =>
+      ch.playlistId === playlistId ? { ...ch, isOffline: false } : ch,
+    )
+
+    const CONCURRENCY = Math.min(Math.max(concurrency, 1), 15)
+    let index = 0
+
+    async function worker() {
+      while (index < channelsToCheck.length) {
+        if (controller.signal.aborted) return
+        const ch = channelsToCheck[index++]
+        const isOnline = await checkChannelUrl(
+          ch.url,
+          timeoutMs,
+          settingsStore.proxyEnabled && Boolean(settingsStore.proxyUrl),
+          settingsStore.proxyUrl,
+          settingsStore.forceHttps,
+        )
+        const isOffline = !isOnline
+
+        if (ch.id !== undefined) {
+          await db.channels.update(ch.id, { isOffline })
+          const idx = channels.value.findIndex(c => c.id === ch.id)
+          if (idx !== -1) {
+            channels.value[idx] = { ...channels.value[idx], isOffline }
+          }
+        }
+
+        healthCheck.value.checked++
+        if (isOffline) healthCheck.value.offlineCount++
+      }
+    }
+
+    const workers = Array.from({ length: CONCURRENCY }, () => worker())
+    await Promise.all(workers)
+
+    if (!controller.signal.aborted) {
+      healthCheck.value.status = 'done'
+    }
+    healthCheck.value.abortController = null
+  }
+
+  function stopHealthCheck(): void {
+    healthCheck.value.abortController?.abort()
+    healthCheck.value.status = 'done'
+    healthCheck.value.abortController = null
+  }
+
+  async function hideOfflineChannels(playlistId: number): Promise<void> {
+    const offlineIds = channels.value
+      .filter(ch => ch.playlistId === playlistId && ch.isOffline === true)
+      .map(ch => ch.id!)
+      .filter(id => id !== undefined)
+
+    if (offlineIds.length === 0) return
+
+    // Oculta da view reativa (não deleta do DB)
+    channels.value = channels.value.filter(ch => !offlineIds.includes(ch.id!))
+
+    // Remove dos recentes
+    const historyStore = useHistoryStore()
+    await historyStore.removeByChannelIds(offlineIds)
+
+    // Limpa o selecionado se estiver offline
+    if (selectedChannel.value && offlineIds.includes(selectedChannel.value.id!)) {
+      selectedChannel.value = null
+    }
+
+    healthCheck.value.offlineCount = 0
+  }
+
   return {
     playlists,
     channels,
@@ -139,6 +243,7 @@ export const usePlaylistStore = defineStore('playlist', () => {
     searchQuery,
     isLoading,
     error,
+    healthCheck,
     filteredChannels,
     groupedChannels,
     loadPlaylists,
@@ -149,5 +254,8 @@ export const usePlaylistStore = defineStore('playlist', () => {
     importFromUrl,
     deletePlaylist,
     updatePlaylist,
+    runHealthCheck,
+    stopHealthCheck,
+    hideOfflineChannels,
   }
 })
