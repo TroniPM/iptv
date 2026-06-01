@@ -45,7 +45,7 @@ function lsSet(key: string, value: unknown) {
 function defaultPos() {
   return {
     x: window.innerWidth - 60,
-    y: window.innerHeight - 80,
+    y: 16,
   }
 }
 
@@ -218,7 +218,7 @@ const panelStyle = computed(() => {
 })
 
 const resizeHandleSide = computed(() =>
-  pos.value.x > window.innerWidth / 2 ? 'right' : 'left',
+  pos.value.x > window.innerWidth / 2 ? 'left' : 'right',
 )
 
 // ─── Fechar ao clicar fora ────────────────────────────────────────────────────
