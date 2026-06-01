@@ -360,64 +360,6 @@ onBeforeUnmount(() => {
           @error="onVideoError"
         />
 
-        <!-- Stats: botão de toggle -->
-        <button
-          v-if="playlistStore.selectedChannel"
-          class="absolute top-3 left-3 z-10 bg-black/70 hover:bg-black/90 text-zinc-300 hover:text-white text-xs font-mono px-2.5 py-1 rounded-md transition-colors select-none"
-          @click="statsVisible = !statsVisible"
-        >
-          {{ statsVisible ? t('player.stats.hide') : t('player.stats.show') }}
-        </button>
-
-        <!-- Stats: painel -->
-        <div
-          v-if="statsVisible && playlistStore.selectedChannel"
-          class="absolute top-11 left-3 z-10 bg-black/85 border border-zinc-700/60 rounded-md text-xs font-mono p-3 space-y-1.5 min-w-48"
-        >
-          <p class="text-zinc-500 font-sans font-semibold uppercase tracking-wider text-[10px] mb-1.5 pb-1.5 border-b border-zinc-700/60">
-            {{ t('player.stats.title') }}
-          </p>
-          <div class="flex justify-between gap-6">
-            <span class="text-zinc-500">{{ t('player.stats.bitrate') }}</span>
-            <span class="text-green-400">{{ stats.bitrate > 0 ? stats.bitrate + ' kbps' : '--' }}</span>
-          </div>
-          <div class="flex justify-between gap-6">
-            <span class="text-zinc-500">{{ t('player.stats.resolution') }}</span>
-            <span class="text-green-400">{{ stats.resolution }}</span>
-          </div>
-          <div class="flex justify-between gap-6">
-            <span class="text-zinc-500">{{ t('player.stats.buffer') }}</span>
-            <span class="text-green-400">{{ stats.bufferLength }}s</span>
-          </div>
-          <div class="flex justify-between gap-6">
-            <span class="text-zinc-500">{{ t('player.stats.dropped') }}</span>
-            <span :class="stats.droppedFrames > 0 ? 'text-yellow-400' : 'text-green-400'">
-              {{ stats.droppedFrames }}
-            </span>
-          </div>
-          <div v-if="stats.level >= 0" class="flex justify-between gap-6">
-            <span class="text-zinc-500">{{ t('player.stats.quality') }}</span>
-            <span class="text-green-400">{{ stats.level }}</span>
-          </div>
-
-          <!-- Seletor de qualidade inline nos stats -->
-          <div v-if="availableLevels.length > 1" class="pt-1.5 border-t border-zinc-700/60">
-            <p class="text-zinc-500 text-[10px] uppercase tracking-wider mb-1">{{ t('player.quality.label') }}</p>
-            <select
-              :value="selectedQuality"
-              class="w-full bg-zinc-800 border border-zinc-700 text-zinc-200 text-xs rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              @change="applyQuality(Number(($event.target as HTMLSelectElement).value))"
-            >
-              <option :value="-1">{{ t('player.quality.auto') }}</option>
-              <option
-                v-for="(lvl, i) in availableLevels"
-                :key="i"
-                :value="i"
-              >{{ qualityLabel(lvl, i) }}</option>
-            </select>
-          </div>
-        </div>
-
         <!-- Overlay: sem canal selecionado -->
         <div
           v-if="!playlistStore.selectedChannel"
@@ -469,6 +411,65 @@ onBeforeUnmount(() => {
           · {{ currentNowProgram.title }}
         </span>
         <div class="flex items-center gap-2 ml-auto shrink-0">
+          <!-- Botão Stats -->
+          <div class="relative flex items-center">
+            <button
+              class="text-xs px-2 py-0.5 rounded transition-colors"
+              :class="statsVisible
+                ? 'bg-indigo-600 text-white'
+                : 'text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800'"
+              @click="statsVisible = !statsVisible"
+            >
+              {{ t('player.stats.show') }}
+            </button>
+            <!-- Stats: painel flutuante -->
+            <div
+              v-if="statsVisible"
+              class="absolute bottom-full mb-2 right-0 z-20 bg-zinc-900/95 border border-zinc-700/60 rounded-md text-xs font-mono p-3 space-y-1.5 min-w-48"
+            >
+              <p class="text-zinc-500 font-sans font-semibold uppercase tracking-wider text-[10px] mb-1.5 pb-1.5 border-b border-zinc-700/60">
+                {{ t('player.stats.title') }}
+              </p>
+              <div class="flex justify-between gap-6">
+                <span class="text-zinc-500">{{ t('player.stats.bitrate') }}</span>
+                <span class="text-green-400">{{ stats.bitrate > 0 ? stats.bitrate + ' kbps' : '--' }}</span>
+              </div>
+              <div class="flex justify-between gap-6">
+                <span class="text-zinc-500">{{ t('player.stats.resolution') }}</span>
+                <span class="text-green-400">{{ stats.resolution }}</span>
+              </div>
+              <div class="flex justify-between gap-6">
+                <span class="text-zinc-500">{{ t('player.stats.buffer') }}</span>
+                <span class="text-green-400">{{ stats.bufferLength }}s</span>
+              </div>
+              <div class="flex justify-between gap-6">
+                <span class="text-zinc-500">{{ t('player.stats.dropped') }}</span>
+                <span :class="stats.droppedFrames > 0 ? 'text-yellow-400' : 'text-green-400'">
+                  {{ stats.droppedFrames }}
+                </span>
+              </div>
+              <div v-if="stats.level >= 0" class="flex justify-between gap-6">
+                <span class="text-zinc-500">{{ t('player.stats.quality') }}</span>
+                <span class="text-green-400">{{ stats.level }}</span>
+              </div>
+              <!-- Seletor de qualidade inline nos stats -->
+              <div v-if="availableLevels.length > 1" class="pt-1.5 border-t border-zinc-700/60">
+                <p class="text-zinc-500 text-[10px] uppercase tracking-wider mb-1">{{ t('player.quality.label') }}</p>
+                <select
+                  :value="selectedQuality"
+                  class="w-full bg-zinc-800 border border-zinc-700 text-zinc-200 text-xs rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  @change="applyQuality(Number(($event.target as HTMLSelectElement).value))"
+                >
+                  <option :value="-1">{{ t('player.quality.auto') }}</option>
+                  <option
+                    v-for="(lvl, i) in availableLevels"
+                    :key="i"
+                    :value="i"
+                  >{{ qualityLabel(lvl, i) }}</option>
+                </select>
+              </div>
+            </div>
+          </div>
           <!-- Botão EPG -->
           <button
             v-if="playlistStore.selectedChannel.tvgId"
