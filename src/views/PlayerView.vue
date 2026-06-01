@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import type Hls from 'hls.js'
 import { usePlaylistStore } from '@/stores/playlist'
 import { useSettingsStore } from '@/stores/settings'
@@ -8,14 +8,15 @@ import { useHistoryStore } from '@/stores/history'
 import { useEpgStore } from '@/stores/epg'
 import { attachStream, destroyStream, isValidStreamUrl } from '@/services/stream'
 import { useI18n } from '@/i18n'
-import type { Channel, ChannelGroup, HlsStats, EpgProgram } from '@/types'
+import type { Channel, HlsStats, EpgProgram } from '@/types'
+import FloatingChannelPanel from '@/components/player/FloatingChannelPanel.vue'
 
 const playlistStore = usePlaylistStore()
 const settingsStore = useSettingsStore()
 const favoritesStore = useFavoritesStore()
 const historyStore = useHistoryStore()
 const epgStore = useEpgStore()
-const { t, tGroup } = useI18n()
+const { t } = useI18n()
 
 // ─── Player ──────────────────────────────────────────────────────────────────
 const videoEl = ref<HTMLVideoElement | null>(null)
@@ -176,14 +177,6 @@ function isNowProgram(prog: EpgProgram): boolean {
   return prog.start <= now && prog.stop > now
 }
 
-function relativeTime(date: Date): string {
-  const diff = Math.floor((Date.now() - date.getTime()) / 1000)
-  if (diff < 60) return 'agora'
-  if (diff < 3600) return `${Math.floor(diff / 60)}min`
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h`
-  return `${Math.floor(diff / 86400)}d`
-}
-
 // ─── Reprodução ──────────────────────────────────────────────────────────────
 function playChannel(channel: Channel) {
   if (!videoEl.value) return
@@ -243,61 +236,6 @@ function onVideoError() {
   isLoading.value = false
   streamError.value = t('player.stream.error.playback')
 }
-
-// ─── Sidebar — abas ───────────────────────────────────────────────────────────
-type SidebarTab = 'channels' | 'favorites' | 'history'
-const activeTab = ref<SidebarTab>('channels')
-
-const favoriteChannels = computed(() =>
-  favoritesStore.getFavoriteChannels(playlistStore.channels),
-)
-
-// ─── Lista lateral ────────────────────────────────────────────────────────────
-const sidebarOpen = ref(true)
-const sidebarWidth = ref(288)
-const isResizing = ref(false)
-const expandedGroups = ref<Set<string>>(new Set())
-
-function toggleGroup(name: string) {
-  if (expandedGroups.value.has(name)) expandedGroups.value.delete(name)
-  else expandedGroups.value.add(name)
-}
-
-function expandAll() {
-  playlistStore.groupedChannels.forEach((g: ChannelGroup) => expandedGroups.value.add(g.name))
-}
-
-function collapseAll() {
-  expandedGroups.value.clear()
-}
-
-function startResize(e: MouseEvent) {
-  isResizing.value = true
-  const startX = e.clientX
-  const startWidth = sidebarWidth.value
-
-  function onMove(ev: MouseEvent) {
-    const delta = startX - ev.clientX
-    sidebarWidth.value = Math.min(640, Math.max(160, startWidth + delta))
-  }
-
-  function onUp() {
-    isResizing.value = false
-    document.removeEventListener('mousemove', onMove)
-    document.removeEventListener('mouseup', onUp)
-  }
-
-  document.addEventListener('mousemove', onMove)
-  document.addEventListener('mouseup', onUp)
-}
-
-watch(
-  () => playlistStore.groupedChannels,
-  (groups: ChannelGroup[]) => {
-    groups.forEach((g) => expandedGroups.value.add(g.name))
-  },
-  { immediate: true },
-)
 
 // Atualiza programas EPG "agora" ao carregar canais
 watch(
@@ -537,239 +475,11 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <!-- ── Handle de resize da sidebar ───────────────────────────── -->
-    <div
-      v-if="sidebarOpen"
-      class="w-1 shrink-0 cursor-col-resize group relative z-10"
-      :class="isResizing ? 'bg-indigo-400' : 'bg-zinc-800 hover:bg-indigo-500'"
-      style="transition: background-color 150ms"
-      @mousedown.prevent="startResize"
-    >
-      <div class="absolute inset-y-0 left-1/2 -translate-x-1/2 flex flex-col items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-        <span class="w-0.5 h-4 rounded-full bg-white/40" />
-        <span class="w-0.5 h-4 rounded-full bg-white/40" />
-      </div>
-    </div>
-
-    <!-- ── Sidebar: lista de canais ──────────────────────────────── -->
-    <aside
-      class="flex flex-col bg-zinc-900 border-l border-zinc-800 shrink-0 overflow-hidden"
-      :style="sidebarOpen
-        ? { width: sidebarWidth + 'px', transition: isResizing ? 'none' : 'width 300ms' }
-        : { width: '2.5rem', transition: 'width 300ms' }"
-    >
-      <!-- Toggle sidebar -->
-      <button
-        class="h-10 flex items-center justify-center text-zinc-400 hover:text-white border-b border-zinc-800 shrink-0"
-        :aria-label="sidebarOpen ? t('player.sidebar.close') : t('player.sidebar.open')"
-        @click="sidebarOpen = !sidebarOpen"
-      >
-        <svg class="w-4 h-4 transition-transform" :class="sidebarOpen ? 'rotate-0' : 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-        </svg>
-      </button>
-
-      <template v-if="sidebarOpen">
-        <!-- Abas -->
-        <div class="flex border-b border-zinc-800 shrink-0">
-          <button
-            v-for="tab in (['channels', 'favorites', 'history'] as const)"
-            :key="tab"
-            class="flex-1 py-2 text-xs font-medium transition-colors"
-            :class="activeTab === tab
-              ? 'text-indigo-400 border-b-2 border-indigo-500 -mb-px'
-              : 'text-zinc-500 hover:text-zinc-300'"
-            @click="activeTab = tab"
-          >
-            {{ tab === 'channels' ? t('player.tabs.channels') : tab === 'favorites' ? t('player.tabs.favorites') : t('player.tabs.history') }}
-          </button>
-        </div>
-
-        <!-- ── ABA: CANAIS ──────────────────────────────────────── -->
-        <template v-if="activeTab === 'channels'">
-          <!-- Seletor de playlist -->
-          <div class="px-3 pt-3 pb-2 border-b border-zinc-800 shrink-0">
-            <select
-              class="w-full bg-zinc-800 border border-zinc-700 text-zinc-200 text-sm rounded px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              :value="playlistStore.activePlaylist?.id"
-              @change="(e) => {
-                const pl = playlistStore.playlists.find((p: { id?: number }) => p.id === Number((e.target as HTMLSelectElement).value))
-                if (pl) playlistStore.selectPlaylist(pl)
-              }"
-            >
-              <option value="" disabled :selected="!playlistStore.activePlaylist">
-                {{ t('player.sidebar.selectPlaylist') }}
-              </option>
-              <option v-for="pl in playlistStore.playlists" :key="pl.id" :value="pl.id">
-                {{ pl.name }}
-              </option>
-            </select>
-          </div>
-
-          <!-- Busca -->
-          <div class="px-3 py-2 border-b border-zinc-800 shrink-0">
-            <input
-              v-model="playlistStore.searchQuery"
-              type="search"
-              :placeholder="t('player.sidebar.search')"
-              class="w-full bg-zinc-800 border border-zinc-700 text-zinc-200 text-sm rounded px-2 py-1.5 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-
-          <!-- Expandir / Recolher todos os grupos -->
-          <div
-            v-if="settingsStore.groupingEnabled && playlistStore.groupedChannels.length > 0"
-            class="px-3 py-1.5 border-b border-zinc-800 flex items-center justify-end gap-3 shrink-0"
-          >
-            <button class="text-xs text-zinc-500 hover:text-zinc-200 transition-colors" @click="expandAll">{{ t('player.sidebar.expandAll') }}</button>
-            <span class="text-zinc-700 select-none">·</span>
-            <button class="text-xs text-zinc-500 hover:text-zinc-200 transition-colors" @click="collapseAll">{{ t('player.sidebar.collapseAll') }}</button>
-          </div>
-
-          <!-- Lista de canais -->
-          <div class="flex-1 overflow-y-auto">
-            <p v-if="!playlistStore.activePlaylist" class="p-4 text-xs text-zinc-600 text-center">
-              {{ t('player.sidebar.noPlaylist') }}
-            </p>
-
-            <!-- Agrupamento ativo -->
-            <template v-else-if="settingsStore.groupingEnabled">
-              <div v-for="group in playlistStore.groupedChannels" :key="group.name">
-                <button
-                  class="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50 transition-colors"
-                  @click="toggleGroup(group.name)"
-                >
-                  <svg class="w-3 h-3 transition-transform shrink-0" :class="expandedGroups.has(group.name) ? 'rotate-90' : ''" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M7.293 4.707a1 1 0 011.414 0L14 10l-5.293 5.293a1 1 0 01-1.414-1.414L11.586 10 6.293 5.121a1 1 0 010-1.414z"/>
-                  </svg>
-                  <span class="truncate flex-1 text-left">{{ tGroup(group.name) }}</span>
-                  <span class="text-zinc-700 font-normal normal-case tracking-normal">{{ group.channels.length }}</span>
-                </button>
-                <div v-show="expandedGroups.has(group.name)">
-                  <div
-                    v-for="ch in group.channels"
-                    :key="ch.id"
-                    class="w-full flex items-center gap-2 px-4 py-2 text-sm transition-colors cursor-pointer"
-                    :class="playlistStore.selectedChannel?.id === ch.id
-                      ? 'bg-indigo-600/20 text-indigo-300 border-l-2 border-indigo-500'
-                      : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 border-l-2 border-transparent'"
-                    @click="playChannel(ch)"
-                  >
-                    <img v-if="ch.logo" :src="ch.logo" class="w-5 h-5 object-contain rounded shrink-0" alt="" />
-                    <div v-else class="w-5 h-5 bg-zinc-700 rounded shrink-0" />
-                    <div class="flex-1 min-w-0">
-                      <div class="truncate">{{ ch.name }}</div>
-                      <div v-if="ch.tvgId && currentProgramIds.get(ch.tvgId)" class="text-[10px] text-zinc-600 truncate">
-                        {{ currentProgramIds.get(ch.tvgId)?.title }}
-                      </div>
-                    </div>
-                    <!-- Botão favorito -->
-                    <button
-                      class="shrink-0 text-base leading-none transition-colors"
-                      :class="favoritesStore.isFavorite(ch.id!) ? 'text-yellow-400' : 'text-zinc-700 hover:text-zinc-400'"
-                      :aria-label="favoritesStore.isFavorite(ch.id!) ? 'Remover favorito' : 'Adicionar favorito'"
-                      @click.stop="favoritesStore.toggleFavorite(ch)"
-                    >{{ favoritesStore.isFavorite(ch.id!) ? '★' : '☆' }}</button>
-                  </div>
-                </div>
-              </div>
-            </template>
-
-            <!-- Lista plana -->
-            <template v-else>
-              <div
-                v-for="ch in playlistStore.filteredChannels"
-                :key="ch.id"
-                class="w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer"
-                :class="playlistStore.selectedChannel?.id === ch.id
-                  ? 'bg-indigo-600/20 text-indigo-300 border-l-2 border-indigo-500'
-                  : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 border-l-2 border-transparent'"
-                @click="playChannel(ch)"
-              >
-                <img v-if="ch.logo" :src="ch.logo" class="w-5 h-5 object-contain rounded shrink-0" alt="" />
-                <div v-else class="w-5 h-5 bg-zinc-700 rounded shrink-0" />
-                <div class="flex-1 min-w-0">
-                  <div class="truncate">{{ ch.name }}</div>
-                  <div v-if="ch.tvgId && currentProgramIds.get(ch.tvgId)" class="text-[10px] text-zinc-600 truncate">
-                    {{ currentProgramIds.get(ch.tvgId)?.title }}
-                  </div>
-                </div>
-                <button
-                  class="shrink-0 text-base leading-none transition-colors"
-                  :class="favoritesStore.isFavorite(ch.id!) ? 'text-yellow-400' : 'text-zinc-700 hover:text-zinc-400'"
-                  @click.stop="favoritesStore.toggleFavorite(ch)"
-                >{{ favoritesStore.isFavorite(ch.id!) ? '★' : '☆' }}</button>
-              </div>
-            </template>
-          </div>
-        </template>
-
-        <!-- ── ABA: FAVORITOS ───────────────────────────────────── -->
-        <template v-else-if="activeTab === 'favorites'">
-          <div class="flex-1 overflow-y-auto">
-            <p v-if="favoriteChannels.length === 0" class="p-4 text-xs text-zinc-600 text-center whitespace-pre-line">
-              {{ t('player.favorites.empty') }}
-            </p>
-            <template v-else>
-              <div
-                v-for="ch in favoriteChannels"
-                :key="ch.id"
-                class="w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer"
-                :class="playlistStore.selectedChannel?.id === ch.id
-                  ? 'bg-indigo-600/20 text-indigo-300 border-l-2 border-indigo-500'
-                  : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 border-l-2 border-transparent'"
-                @click="playChannel(ch)"
-              >
-                <img v-if="ch.logo" :src="ch.logo" class="w-5 h-5 object-contain rounded shrink-0" alt="" />
-                <div v-else class="w-5 h-5 bg-zinc-700 rounded shrink-0" />
-                <span class="truncate flex-1">{{ ch.name }}</span>
-                <button
-                  class="shrink-0 text-base text-yellow-400 leading-none"
-                  @click.stop="favoritesStore.toggleFavorite(ch)"
-                >★</button>
-              </div>
-            </template>
-          </div>
-        </template>
-
-        <!-- ── ABA: RECENTES ────────────────────────────────────── -->
-        <template v-else-if="activeTab === 'history'">
-          <div class="flex-1 overflow-y-auto">
-            <div v-if="historyStore.entries.length > 0" class="px-3 py-1.5 border-b border-zinc-800 flex justify-end">
-              <button
-                class="text-xs text-zinc-600 hover:text-red-400 transition-colors"
-                @click="historyStore.clearHistory()"
-              >{{ t('player.history.clear') }}</button>
-            </div>
-            <p v-if="historyStore.entries.length === 0" class="p-4 text-xs text-zinc-600 text-center">
-              {{ t('player.history.empty') }}
-            </p>
-            <template v-else>
-              <button
-                v-for="entry in historyStore.entries"
-                :key="entry.id"
-                class="w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors"
-                :class="playlistStore.selectedChannel?.id === entry.channelId
-                  ? 'bg-indigo-600/20 text-indigo-300 border-l-2 border-indigo-500'
-                  : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 border-l-2 border-transparent'"
-                @click="() => {
-                  const ch = playlistStore.channels.find((c: Channel) => c.id === entry.channelId)
-                  if (ch) playChannel(ch)
-                }"
-              >
-                <img v-if="entry.channelLogo" :src="entry.channelLogo" class="w-5 h-5 object-contain rounded shrink-0" alt="" />
-                <div v-else class="w-5 h-5 bg-zinc-700 rounded shrink-0" />
-                <div class="flex-1 min-w-0">
-                  <div class="truncate">{{ entry.channelName }}</div>
-                  <div class="text-[10px] text-zinc-600">{{ entry.channelGroup }}</div>
-                </div>
-                <span class="shrink-0 text-[10px] text-zinc-600">{{ relativeTime(entry.watchedAt) }}</span>
-              </button>
-            </template>
-          </div>
-        </template>
-      </template>
-    </aside>
+    <!-- ── Painel flutuante de canais ────────────────────────────── -->
+    <FloatingChannelPanel
+      :currentProgramIds="currentProgramIds"
+      @play-channel="playChannel"
+    />
   </div>
 </template>
 

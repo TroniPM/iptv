@@ -60,8 +60,7 @@ const UI_TRANSLATIONS: Record<Locale, Record<string, string>> = {
     'player.stream.error.mixedContent':     'Este canal usa HTTP, mas a página está em HTTPS. O navegador bloqueou a requisição (Mixed Content). Ative o Proxy CORS nas configurações para contornar este problema.',
 
     // Player — painel de estatísticas
-    'player.stats.show':             '📊 Stats',
-    'player.stats.hide':             '✕ Stats',
+    'player.stats.show':             'Stats',
     'player.stats.title':            'Estatísticas',
     'player.stats.bitrate':          'Bitrate',
     'player.stats.resolution':       'Resolução',
@@ -224,8 +223,7 @@ const UI_TRANSLATIONS: Record<Locale, Record<string, string>> = {
     'player.stream.error.mixedContent':     'This channel uses HTTP, but the page is on HTTPS. The browser blocked the request (Mixed Content). Enable the CORS Proxy in settings to work around this.',
 
     // Player — stats panel
-    'player.stats.show':             '📊 Stats',
-    'player.stats.hide':             '✕ Stats',
+    'player.stats.show':             'Stats',
     'player.stats.title':            'Statistics',
     'player.stats.bitrate':          'Bitrate',
     'player.stats.resolution':       'Resolution',
