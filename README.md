@@ -167,7 +167,7 @@ The following features are not yet implemented or are only partially implemented
 
 | Feature | Notes |
 |---|---|
-| Multiple profiles | Different channel lists and settings for different users on the same device. |
+| User accounts | Different channel lists and settings for different users on the same device. |
 | Auto-refresh of URL playlists | Automatically re-fetch URL playlists at a configurable interval. |
 | Channel health check | Test each channel URL and mark the ones that are offline or broken. |
 | Keyboard shortcuts | Control playback (play/pause, mute, fullscreen) and navigate between channels using the keyboard. |

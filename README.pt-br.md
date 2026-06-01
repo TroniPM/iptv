@@ -167,7 +167,7 @@ As funcionalidades abaixo ainda não foram implementadas ou foram implementadas 
 
 | Funcionalidade | Observações |
 |---|---|
-| Múltiplos perfis | Diferentes listas de canais e configurações para usuários distintos no mesmo dispositivo. |
+| Contas de usuário | Diferentes listas de canais e configurações para usuários distintos no mesmo dispositivo. |
 | Atualização automática de listas por URL | Re-baixar listas importadas via URL em um intervalo configurável. |
 | Verificação de saúde dos canais | Testar cada URL de canal e marcar os que estão offline ou quebrados. |
 | Atalhos de teclado | Controlar a reprodução (play/pause, mudo, tela cheia) e navegar entre canais pelo teclado. |
