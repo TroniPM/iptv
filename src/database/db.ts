@@ -35,7 +35,7 @@ class IPTVDatabase extends Dexie {
       channels: '++id, playlistId, name, group, tvgId, url',
       settings: 'id',
     }).upgrade(async (tx) => {
-      await tx.table('settings').update(1, { language: 'pt-BR' })
+      await tx.table('settings').update(1, { language: 'en' })
     })
 
     // v3: adiciona favoritos, histórico e EPG
@@ -80,7 +80,7 @@ db.on('ready', async () => {
       forceHttps: false,
       lastChannelId: null,
       lastPlaylistId: null,
-      language: 'pt-BR',
+      language: 'en',
       theme: 'dark',
     } satisfies SettingsRecord)
   }
