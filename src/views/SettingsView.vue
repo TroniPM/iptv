@@ -365,7 +365,7 @@ onMounted(async () => {
 
 <template>
   <div class="flex-1 overflow-y-auto p-6 md:p-10">
-    <div class="max-w-3xl mx-auto space-y-8">
+    <div class="max-w-4xl mx-auto space-y-8">
 
       <!-- Cabeçalho -->
       <div class="flex items-center justify-between">
@@ -730,6 +730,8 @@ onMounted(async () => {
                   <th class="px-4 py-3 text-left">{{ t('manage.table.name') }}</th>
                   <th class="px-4 py-3 text-left hidden md:table-cell">{{ t('manage.table.source') }}</th>
                   <th class="px-4 py-3 text-left hidden lg:table-cell">{{ t('manage.table.addedAt') }}</th>
+                  <th class="px-4 py-3 text-left hidden xl:table-cell">{{ t('settings.autoRefresh') }}</th>
+                  <th class="px-4 py-3 text-left hidden xl:table-cell">{{ t('settings.lastRefreshed') }}</th>
                   <th class="px-4 py-3 text-right">{{ t('manage.table.actions') }}</th>
                 </tr>
               </thead>
@@ -766,6 +768,30 @@ onMounted(async () => {
                     {{ new Date(pl.createdAt).toLocaleDateString(locale) }}
                   </td>
 
+                  <!-- Auto-refresh interval -->
+                  <td class="px-4 py-3 hidden xl:table-cell" @click.stop>
+                    <template v-if="pl.source === 'url'">
+                      <select
+                        :value="pl.autoRefreshInterval ?? 0"
+                        class="bg-zinc-800 border border-zinc-700 text-zinc-300 text-xs rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        @change="handleRefreshIntervalChange(pl.id!, ($event.target as HTMLSelectElement).value)"
+                      >
+                        <option :value="0">{{ t('settings.autoRefreshDisabled') }}</option>
+                        <option v-for="opt in REFRESH_INTERVAL_OPTIONS.slice(1)" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+                      </select>
+                    </template>
+                    <span v-else class="text-zinc-600">—</span>
+                  </td>
+
+                  <!-- Last refreshed -->
+                  <td class="px-4 py-3 hidden xl:table-cell text-zinc-500 text-xs">
+                    <template v-if="pl.source === 'url'">
+                      <span v-if="refreshingPlaylistId === pl.id" class="text-indigo-400">{{ t('settings.refreshing') }}</span>
+                      <span v-else>{{ formatRelative(pl.lastRefreshedAt) }}</span>
+                    </template>
+                    <span v-else class="text-zinc-600">—</span>
+                  </td>
+
                   <td class="px-4 py-3 text-right" @click.stop>
                     <div class="flex items-center justify-end gap-2">
                       <template v-if="editingPlaylist?.id === pl.id">
@@ -773,6 +799,7 @@ onMounted(async () => {
                         <AppButton size="sm" variant="ghost" @click="editingPlaylist = null">{{ t('manage.action.cancel') }}</AppButton>
                       </template>
                       <template v-else>
+                        <AppButton v-if="pl.source === 'url'" size="sm" variant="ghost" :disabled="refreshingPlaylistId === pl.id" @click="handleRefreshNow(pl)" :title="t('settings.refreshNow')">&#x21BB;</AppButton>
                         <AppButton size="sm" variant="secondary" @click="startEdit(pl)">{{ t('manage.action.rename') }}</AppButton>
                         <AppButton size="sm" variant="danger" @click="confirmDelete(pl)">{{ t('manage.action.delete') }}</AppButton>
                       </template>

@@ -7,6 +7,9 @@ import { useSettingsStore } from '@/stores/settings'
 import { useHistoryStore } from '@/stores/history'
 import type { Playlist, Channel, ChannelGroup } from '@/types'
 
+// Timers de auto-refresh: fora do estado reativo para evitar proxying do Proxy
+const refreshTimers = new Map<number, ReturnType<typeof setInterval>>()
+
 export const usePlaylistStore = defineStore('playlist', () => {
   const settingsStore = useSettingsStore()
 
@@ -45,8 +48,37 @@ export const usePlaylistStore = defineStore('playlist', () => {
 
   // ─── Actions ────────────────────────────────────────────────────────────────
 
+  // ─── Auto-Refresh Helpers ────────────────────────────────────────────────────
+
+  function stopRefreshTimer(playlistId: number): void {
+    const existing = refreshTimers.get(playlistId)
+    if (existing !== undefined) {
+      clearInterval(existing)
+      refreshTimers.delete(playlistId)
+    }
+  }
+
+  function stopAllTimers(): void {
+    refreshTimers.forEach((timer) => clearInterval(timer))
+    refreshTimers.clear()
+  }
+
+  function startRefreshTimer(playlist: Playlist): void {
+    if (playlist.source !== 'url' || !playlist.autoRefreshInterval || playlist.autoRefreshInterval <= 0) return
+    stopRefreshTimer(playlist.id!)
+    const timer = setInterval(() => refreshPlaylist(playlist.id!), playlist.autoRefreshInterval * 60_000)
+    refreshTimers.set(playlist.id!, timer)
+  }
+
   async function loadPlaylists() {
-    playlists.value = await db.playlists.toArray()
+    const loaded = await db.playlists.toArray()
+    playlists.value = loaded
+    stopAllTimers()
+    for (const pl of loaded) {
+      if (pl.source === 'url' && pl.autoRefreshInterval > 0) {
+        startRefreshTimer(pl)
+      }
+    }
   }
 
   async function loadChannels(playlistId: number) {
@@ -95,6 +127,7 @@ export const usePlaylistStore = defineStore('playlist', () => {
         rawContent,
         createdAt: now,
         updatedAt: now,
+        autoRefreshInterval: 0,
       })
 
       const parsed = parseM3U(rawContent, playlistId as number)
@@ -128,7 +161,52 @@ export const usePlaylistStore = defineStore('playlist', () => {
     }
   }
 
+  async function refreshPlaylist(playlistId: number): Promise<void> {
+    const playlist = playlists.value.find((p: Playlist) => p.id === playlistId)
+    if (!playlist || playlist.source !== 'url') return
+    isLoading.value = true
+    error.value = null
+    try {
+      const finalUrl = prepareUrl(
+        playlist.sourceValue,
+        settingsStore.proxyEnabled && Boolean(settingsStore.proxyUrl),
+        settingsStore.proxyUrl,
+      )
+      const response = await fetch(finalUrl)
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+      const raw = await response.text()
+      const now = new Date()
+      const parsed = parseM3U(raw, playlistId)
+      await db.channels.where('playlistId').equals(playlistId).delete()
+      await db.channels.bulkAdd(parsed)
+      await db.playlists.update(playlistId, { rawContent: raw, updatedAt: now, lastRefreshedAt: now })
+      await loadPlaylists()
+      if (activePlaylist.value?.id === playlistId) {
+        await loadChannels(playlistId)
+      }
+    } catch (e) {
+      error.value = 'Erro ao atualizar a lista M3U.'
+      console.error(e)
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  async function setRefreshInterval(playlistId: number, minutes: number): Promise<void> {
+    await db.playlists.update(playlistId, { autoRefreshInterval: minutes })
+    const idx = playlists.value.findIndex((p: Playlist) => p.id === playlistId)
+    if (idx !== -1) {
+      playlists.value[idx] = { ...playlists.value[idx], autoRefreshInterval: minutes }
+    }
+    stopRefreshTimer(playlistId)
+    if (minutes > 0) {
+      const playlist = playlists.value.find((p: Playlist) => p.id === playlistId)
+      if (playlist) startRefreshTimer(playlist)
+    }
+  }
+
   async function deletePlaylist(id: number) {
+    stopRefreshTimer(id)
     await db.channels.where('playlistId').equals(id).delete()
     await db.playlists.delete(id)
     if (activePlaylist.value?.id === id) {
@@ -254,6 +332,8 @@ export const usePlaylistStore = defineStore('playlist', () => {
     importFromUrl,
     deletePlaylist,
     updatePlaylist,
+    refreshPlaylist,
+    setRefreshInterval,
     runHealthCheck,
     stopHealthCheck,
     hideOfflineChannels,

@@ -61,6 +61,19 @@ class IPTVDatabase extends Dexie {
     }).upgrade(async (tx) => {
       await tx.table('settings').update(1, { theme: 'dark' })
     })
+
+    // v5: adiciona campos autoRefreshInterval e lastRefreshedAt nas playlists
+    this.version(5).stores({
+      playlists: '++id, name, source, createdAt',
+      channels: '++id, playlistId, name, group, tvgId, url',
+      settings: 'id',
+      favorites: '++id, channelId',
+      history: '++id, channelId, watchedAt',
+      epgSources: '++id, url',
+      epgPrograms: '++id, sourceId, channelId, start',
+    }).upgrade(async (tx) => {
+      await tx.table('playlists').toCollection().modify({ autoRefreshInterval: 0 })
+    })
   }
 }
 

@@ -208,6 +208,22 @@ const UI_TRANSLATIONS: Record<Locale, Record<string, string>> = {
     // Gerenciar listas — confirmações (use tParam para {name} e {count})
     'manage.confirm.deleteList':     'Excluir a lista "{name}" e todos os seus canais?',
     'manage.confirm.deleteGroup':    'Excluir o grupo "{name}" e seus {count} canal(is)?',
+
+    // Auto-refresh de playlists URL
+    'settings.autoRefresh':          'Auto-refresh',
+    'settings.autoRefreshDisabled':  'Desabilitado',
+    'settings.lastRefreshed':        'Última atualização',
+    'settings.refreshNow':           'Atualizar agora',
+    'settings.refreshing':           'Atualizando...',
+    'settings.justNow':              'Agora mesmo',
+    'settings.refreshError':         'Erro ao atualizar a lista.',
+    'settings.autoRefresh.15min':    '15 min',
+    'settings.autoRefresh.30min':    '30 min',
+    'settings.autoRefresh.1h':       '1 hora',
+    'settings.autoRefresh.2h':       '2 horas',
+    'settings.autoRefresh.6h':       '6 horas',
+    'settings.autoRefresh.12h':      '12 horas',
+    'settings.autoRefresh.24h':      '24 horas',
   },
   'en-US': {
     // Navigation
@@ -392,6 +408,22 @@ const UI_TRANSLATIONS: Record<Locale, Record<string, string>> = {
     // Manage playlists — confirmations (use tParam for {name} and {count})
     'manage.confirm.deleteList':     'Delete playlist "{name}" and all its channels?',
     'manage.confirm.deleteGroup':    'Delete group "{name}" and its {count} channel(s)?',
+
+    // URL playlist auto-refresh
+    'settings.autoRefresh':          'Auto-refresh',
+    'settings.autoRefreshDisabled':  'Disabled',
+    'settings.lastRefreshed':        'Last refreshed',
+    'settings.refreshNow':           'Refresh now',
+    'settings.refreshing':           'Refreshing...',
+    'settings.justNow':              'Just now',
+    'settings.refreshError':         'Error refreshing the playlist.',
+    'settings.autoRefresh.15min':    '15 min',
+    'settings.autoRefresh.30min':    '30 min',
+    'settings.autoRefresh.1h':       '1 hour',
+    'settings.autoRefresh.2h':       '2 hours',
+    'settings.autoRefresh.6h':       '6 hours',
+    'settings.autoRefresh.12h':      '12 hours',
+    'settings.autoRefresh.24h':      '24 hours',
   },
 }
 

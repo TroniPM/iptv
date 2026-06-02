@@ -11,6 +11,10 @@ export interface Playlist {
   rawContent: string
   createdAt: Date
   updatedAt: Date
+  /** Intervalo de auto-refresh em minutos. 0 = desabilitado. Só aplicável a source: 'url' */
+  autoRefreshInterval: number
+  /** Data/hora do último refresh automático ou manual. Undefined se nunca atualizado */
+  lastRefreshedAt?: Date
 }
 
 // ─── Canal ──────────────────────────────────────────────────────────────────
