@@ -12,6 +12,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const lastChannelId = ref<number | null>(null)
   const lastPlaylistId = ref<number | null>(null)
   const language = ref<string>('pt-BR')
+  const theme = ref<'dark' | 'light'>('dark')
 
   // ─── Actions ────────────────────────────────────────────────────────────────
 
@@ -25,6 +26,7 @@ export const useSettingsStore = defineStore('settings', () => {
       lastChannelId.value = record.lastChannelId ?? null
       lastPlaylistId.value = record.lastPlaylistId ?? null
       language.value = record.language ?? 'pt-BR'
+      theme.value = record.theme ?? 'dark'
     }
   }
 
@@ -38,6 +40,7 @@ export const useSettingsStore = defineStore('settings', () => {
     if ('lastPlaylistId' in partial)
       lastPlaylistId.value = partial.lastPlaylistId!
     if ('language' in partial) language.value = partial.language!
+    if ('theme' in partial) theme.value = partial.theme!
 
     await db.settings.update(1, partial)
   }
@@ -58,6 +61,10 @@ export const useSettingsStore = defineStore('settings', () => {
     await save({ language: lang })
   }
 
+  async function toggleTheme() {
+    await save({ theme: theme.value === 'dark' ? 'light' : 'dark' })
+  }
+
   return {
     groupingEnabled,
     proxyEnabled,
@@ -66,11 +73,13 @@ export const useSettingsStore = defineStore('settings', () => {
     lastChannelId,
     lastPlaylistId,
     language,
+    theme,
     load,
     save,
     toggleGrouping,
     toggleProxy,
     toggleForceHttps,
     setLanguage,
+    toggleTheme,
   }
 })

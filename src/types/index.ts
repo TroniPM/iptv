@@ -58,6 +58,8 @@ export interface AppSettings {
   lastPlaylistId: number | null
   /** Código do idioma da interface (ex: 'pt-BR', 'en-US') */
   language: string
+  /** Tema visual da interface */
+  theme: 'dark' | 'light'
 }
 
 // ─── Estado do Player ────────────────────────────────────────────────────────

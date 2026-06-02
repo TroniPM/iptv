@@ -430,6 +430,15 @@ onMounted(async () => {
             <AppToggle :model-value="settingsStore.groupingEnabled" @update:model-value="settingsStore.toggleGrouping" />
           </div>
 
+          <!-- Tema light -->
+          <div class="flex items-center justify-between gap-4 pt-4 border-t border-zinc-800">
+            <div>
+              <p class="text-sm text-zinc-200">{{ t('settings.theme.title') }}</p>
+              <p class="text-xs text-zinc-500 mt-0.5">{{ t('settings.theme.desc') }}</p>
+            </div>
+            <AppToggle :model-value="settingsStore.theme === 'light'" @update:model-value="settingsStore.toggleTheme" />
+          </div>
+
           <!-- Forçar HTTPS -->
           <div class="flex items-center justify-between gap-4 pt-4 border-t border-zinc-800">
             <div>

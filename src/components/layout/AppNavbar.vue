@@ -16,7 +16,7 @@ const navLinks = computed(() => [
 <template>
   <header class="h-14 bg-zinc-900 border-b border-zinc-800 flex items-center px-4 gap-4 shrink-0">
     <!-- Logo -->
-    <span class="text-white font-bold text-lg tracking-tight select-none">
+    <span class="text-zinc-100 font-bold text-lg tracking-tight select-none">
       📺 IPTV Player
     </span>
 
@@ -30,7 +30,7 @@ const navLinks = computed(() => [
         :class="
           route.path === link.to
             ? 'bg-indigo-600 text-white'
-            : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+            : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800'
         "
       >
         {{ link.label }}
@@ -41,7 +41,7 @@ const navLinks = computed(() => [
 
     <!-- Hamburger (mobile) -->
     <button
-      class="md:hidden p-2 rounded text-zinc-400 hover:text-white hover:bg-zinc-800"
+      class="md:hidden p-2 rounded text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
       aria-label="Abrir menu"
       @click="menuOpen = !menuOpen"
     >
@@ -77,7 +77,7 @@ const navLinks = computed(() => [
       :class="
         route.path === link.to
           ? 'bg-indigo-600 text-white'
-          : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+          : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800'
       "
       @click="menuOpen = false"
     >

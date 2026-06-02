@@ -15,9 +15,9 @@ const emit = defineEmits<{ close: [] }>()
       <div class="bg-zinc-900 border border-zinc-700 rounded-lg w-full max-w-lg shadow-2xl">
         <!-- Header -->
         <div class="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
-          <h2 class="text-base font-semibold text-white">{{ title }}</h2>
+          <h2 class="text-base font-semibold text-zinc-100">{{ title }}</h2>
           <button
-            class="text-zinc-500 hover:text-white transition-colors p-1 rounded"
+            class="text-zinc-500 hover:text-zinc-100 transition-colors p-1 rounded"
             aria-label="Fechar"
             @click="emit('close')"
           >

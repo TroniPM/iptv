@@ -1,9 +1,16 @@
 <script setup lang="ts">
+import { watchEffect } from 'vue'
 import { useRoute } from 'vue-router'
 import AppNavbar from '@/components/layout/AppNavbar.vue'
 import PlayerView from '@/views/PlayerView.vue'
+import { useSettingsStore } from '@/stores/settings'
 
 const route = useRoute()
+const settingsStore = useSettingsStore()
+
+watchEffect(() => {
+  document.documentElement.classList.toggle('light', settingsStore.theme === 'light')
+})
 </script>
 
 <template>

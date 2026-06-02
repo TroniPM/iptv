@@ -48,6 +48,19 @@ class IPTVDatabase extends Dexie {
       epgSources: '++id, url',
       epgPrograms: '++id, sourceId, channelId, start',
     })
+
+    // v4: adiciona campo theme nas configurações
+    this.version(4).stores({
+      playlists: '++id, name, source, createdAt',
+      channels: '++id, playlistId, name, group, tvgId, url',
+      settings: 'id',
+      favorites: '++id, channelId',
+      history: '++id, channelId, watchedAt',
+      epgSources: '++id, url',
+      epgPrograms: '++id, sourceId, channelId, start',
+    }).upgrade(async (tx) => {
+      await tx.table('settings').update(1, { theme: 'dark' })
+    })
   }
 }
 
@@ -68,6 +81,7 @@ db.on('ready', async () => {
       lastChannelId: null,
       lastPlaylistId: null,
       language: 'pt-BR',
+      theme: 'dark',
     } satisfies SettingsRecord)
   }
 })
