@@ -198,6 +198,9 @@ const UI_TRANSLATIONS: Record<Locale, Record<string, string>> = {
     'manage.import.urlPlaceholder':  'https://exemplo.com/lista.m3u',
     'manage.import.fileLabel':       'Arquivo .m3u / .m3u8 *',
     'manage.import.submit':          'Importar',
+    'manage.progress.downloading':   'Baixando...',
+    'manage.progress.parsing':       'Analisando canais...',
+    'manage.progress.saving':        'Salvando {current} / {total} canais...',
 
     // Gerenciar listas — erros de validação
     'manage.error.noName':           'Informe um nome para a lista.',
@@ -398,6 +401,9 @@ const UI_TRANSLATIONS: Record<Locale, Record<string, string>> = {
     'manage.import.urlPlaceholder':  'https://example.com/playlist.m3u',
     'manage.import.fileLabel':       '.m3u / .m3u8 file *',
     'manage.import.submit':          'Import',
+    'manage.progress.downloading':   'Downloading...',
+    'manage.progress.parsing':       'Parsing channels...',
+    'manage.progress.saving':        'Saving {current} / {total} channels...',
 
     // Manage playlists — validation errors
     'manage.error.noName':           'Please provide a name for the playlist.',

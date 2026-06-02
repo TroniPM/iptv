@@ -170,7 +170,6 @@ As funcionalidades abaixo ainda não foram implementadas ou foram implementadas 
 | Contas de usuário | Diferentes listas de canais e configurações para usuários distintos no mesmo dispositivo. |
 | Exportar lista como M3U | Exportar uma lista filtrada ou personalizada de volta como arquivo M3U. |
 | Xtream Codes API | Importar listas usando credenciais de servidor Xtream (usuário, senha, host) em vez de uma URL M3U direta. |
-| Barra de progresso na importação | Exibir indicador de progresso ao carregar listas grandes. |
 | `<html lang>` dinâmico | Atualizar o atributo de idioma da página quando o usuário mudar o idioma nas configurações. |
 
 ### Parcialmente implementado

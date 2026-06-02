@@ -1102,6 +1102,39 @@ onMounted(async () => {
       </div>
 
       <p v-if="importError" class="text-xs text-red-400">{{ importError }}</p>
+
+      <!-- Progresso de importação -->
+      <div v-if="playlistStore.importProgress.status !== 'idle'" class="space-y-1.5 pt-1">
+        <p class="text-xs text-zinc-400">
+          <template v-if="playlistStore.importProgress.status === 'saving'">
+            {{ tParam('manage.progress.saving', {
+              current: String(Math.min(playlistStore.importProgress.current, playlistStore.importProgress.total)),
+              total: String(playlistStore.importProgress.total)
+            }) }}
+          </template>
+          <template v-else-if="playlistStore.importProgress.status === 'parsing'">
+            {{ t('manage.progress.parsing') }}
+          </template>
+          <template v-else>
+            {{ t('manage.progress.downloading') }}
+          </template>
+        </p>
+        <div class="w-full bg-zinc-800 rounded-full h-1.5 overflow-hidden">
+          <div
+            :class="[
+              'h-1.5 rounded-full transition-all duration-300 bg-indigo-500',
+              (playlistStore.importProgress.status === 'parsing' ||
+               (playlistStore.importProgress.status === 'downloading' && playlistStore.importProgress.total === 0))
+                ? 'animate-pulse' : ''
+            ]"
+            :style="{
+              width: playlistStore.importProgress.total > 0 && playlistStore.importProgress.status !== 'parsing'
+                ? `${Math.min((playlistStore.importProgress.current / playlistStore.importProgress.total) * 100, 100)}%`
+                : '50%'
+            }"
+          />
+        </div>
+      </div>
     </div>
 
     <template #footer>

@@ -22,6 +22,13 @@ export const usePlaylistStore = defineStore('playlist', () => {
   const isLoading = ref(false)
   const error = ref<string | null>(null)
 
+  // ─── Import Progress State ─────────────────────────────────────────────────
+  const importProgress = ref<{
+    status: 'idle' | 'downloading' | 'parsing' | 'saving'
+    current: number
+    total: number
+  }>({ status: 'idle', current: 0, total: 0 })
+
   // ─── Health Check State ──────────────────────────────────────────────────────
   const healthCheck = ref<{
     status: 'idle' | 'running' | 'done'
@@ -110,6 +117,31 @@ export const usePlaylistStore = defineStore('playlist', () => {
     db.settings.update(1, { lastChannelId: channel.id })
   }
 
+  async function downloadWithProgress(url: string): Promise<string> {
+    const response = await fetch(url)
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    const contentLength = response.headers.get('Content-Length')
+    const total = contentLength ? parseInt(contentLength, 10) : 0
+    importProgress.value = { status: 'downloading', current: 0, total }
+    const reader = response.body!.getReader()
+    const chunks: Uint8Array[] = []
+    let received = 0
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      chunks.push(value)
+      received += value.length
+      importProgress.value.current = received
+    }
+    const merged = new Uint8Array(received)
+    let pos = 0
+    for (const chunk of chunks) {
+      merged.set(chunk, pos)
+      pos += chunk.length
+    }
+    return new TextDecoder().decode(merged)
+  }
+
   async function importFromText(
     rawContent: string,
     name: string,
@@ -130,8 +162,15 @@ export const usePlaylistStore = defineStore('playlist', () => {
         autoRefreshInterval: 0,
       })
 
+      importProgress.value = { status: 'parsing', current: 0, total: 0 }
       const parsed = parseM3U(rawContent, playlistId as number)
-      await db.channels.bulkAdd(parsed)
+
+      const BATCH_SIZE = 500
+      importProgress.value = { status: 'saving', current: 0, total: parsed.length }
+      for (let i = 0; i < parsed.length; i += BATCH_SIZE) {
+        await db.channels.bulkAdd(parsed.slice(i, i + BATCH_SIZE))
+        importProgress.value.current = Math.min(i + BATCH_SIZE, parsed.length)
+      }
 
       await loadPlaylists()
       const created = playlists.value.find((p: Playlist) => p.id === playlistId)!
@@ -141,6 +180,7 @@ export const usePlaylistStore = defineStore('playlist', () => {
       throw e
     } finally {
       isLoading.value = false
+      importProgress.value = { status: 'idle', current: 0, total: 0 }
     }
   }
 
@@ -149,11 +189,10 @@ export const usePlaylistStore = defineStore('playlist', () => {
     error.value = null
     try {
       const finalUrl = prepareUrl(url, settingsStore.proxyEnabled && Boolean(settingsStore.proxyUrl), settingsStore.proxyUrl)
-      const response = await fetch(finalUrl)
-      if (!response.ok) throw new Error(`HTTP ${response.status}`)
-      const raw = await response.text()
+      const raw = await downloadWithProgress(finalUrl)
       return importFromText(raw, name, 'url', url)
     } catch (e) {
+      importProgress.value = { status: 'idle', current: 0, total: 0 }
       error.value = 'Erro ao baixar a lista M3U.'
       throw e
     } finally {
@@ -172,13 +211,14 @@ export const usePlaylistStore = defineStore('playlist', () => {
         settingsStore.proxyEnabled && Boolean(settingsStore.proxyUrl),
         settingsStore.proxyUrl,
       )
-      const response = await fetch(finalUrl)
-      if (!response.ok) throw new Error(`HTTP ${response.status}`)
-      const raw = await response.text()
+      const raw = await downloadWithProgress(finalUrl)
       const now = new Date()
       const parsed = parseM3U(raw, playlistId)
       await db.channels.where('playlistId').equals(playlistId).delete()
-      await db.channels.bulkAdd(parsed)
+      const BATCH_SIZE = 500
+      for (let i = 0; i < parsed.length; i += BATCH_SIZE) {
+        await db.channels.bulkAdd(parsed.slice(i, i + BATCH_SIZE))
+      }
       await db.playlists.update(playlistId, { rawContent: raw, updatedAt: now, lastRefreshedAt: now })
       await loadPlaylists()
       if (activePlaylist.value?.id === playlistId) {
@@ -188,6 +228,7 @@ export const usePlaylistStore = defineStore('playlist', () => {
       error.value = 'Erro ao atualizar a lista M3U.'
       console.error(e)
     } finally {
+      importProgress.value = { status: 'idle', current: 0, total: 0 }
       isLoading.value = false
     }
   }
@@ -321,6 +362,7 @@ export const usePlaylistStore = defineStore('playlist', () => {
     searchQuery,
     isLoading,
     error,
+    importProgress,
     healthCheck,
     filteredChannels,
     groupedChannels,

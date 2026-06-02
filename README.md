@@ -170,7 +170,6 @@ The following features are not yet implemented or are only partially implemented
 | User accounts | Different channel lists and settings for different users on the same device. |
 | Export playlist as M3U | Export a filtered or customized channel list back as an M3U file. |
 | Xtream Codes API | Import playlists using Xtream server credentials (username, password, host) instead of a plain M3U URL. |
-| Import progress bar | Show a progress indicator while loading large playlists. |
 | Dynamic `<html lang>` | Update the page's language attribute when the user changes the language setting. |
 
 ### Partially implemented
