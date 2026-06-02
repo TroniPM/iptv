@@ -354,6 +354,50 @@ async function hideOffline() {
   await playlistStore.hideOfflineChannels(healthCheckPlaylistId.value)
 }
 
+// ─── Auto-refresh ─────────────────────────────────────────────────────────────
+const refreshingPlaylistId = ref<number | null>(null)
+
+const REFRESH_INTERVAL_OPTIONS: Array<{ value: number; label: string }> = [
+  { value: 0,    label: '' },
+  { value: 15,   label: '15 min' },
+  { value: 30,   label: '30 min' },
+  { value: 60,   label: '1 h' },
+  { value: 120,  label: '2 h' },
+  { value: 360,  label: '6 h' },
+  { value: 720,   label: '12 h' },
+  { value: 1440,  label: '24 h' },
+  { value: 2880,  label: '48 h' },
+  { value: 10080, label: '7 d' },
+  { value: 21600, label: '15 d' },
+  { value: 44640, label: '31 d' },
+]
+
+async function handleRefreshIntervalChange(playlistId: number, value: string) {
+  await playlistStore.setRefreshInterval(playlistId, parseInt(value, 10))
+}
+
+async function handleRefreshNow(pl: Playlist) {
+  refreshingPlaylistId.value = pl.id!
+  await playlistStore.refreshPlaylist(pl.id!)
+  refreshingPlaylistId.value = null
+}
+
+function formatRelative(date: Date | undefined): string {
+  if (!date) return '—'
+  const diff = Math.floor((Date.now() - new Date(date).getTime()) / 1000)
+  if (diff < 60) return t('settings.justNow')
+  if (diff < 3600) {
+    const m = Math.floor(diff / 60)
+    return locale.value === 'pt-BR' ? `há ${m} min` : `${m} min ago`
+  }
+  if (diff < 86400) {
+    const h = Math.floor(diff / 3600)
+    return locale.value === 'pt-BR' ? `há ${h}h` : `${h}h ago`
+  }
+  const d = Math.floor(diff / 86400)
+  return locale.value === 'pt-BR' ? `há ${d}d` : `${d}d ago`
+}
+
 // ─── Init ─────────────────────────────────────────────────────────────────────
 onMounted(async () => {
   await settingsStore.load()
