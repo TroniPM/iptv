@@ -57,6 +57,13 @@ function copyInsecureUrl() {
   })
 }
 
+// ─── Utilitários ─────────────────────────────────────────────────────────────
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
 // ─── Modal de importação ──────────────────────────────────────────────────────
 const showImportModal = ref(false)
 const importTab = ref<'url' | 'file'>('url')
@@ -1115,8 +1122,17 @@ onMounted(async () => {
           <template v-else-if="playlistStore.importProgress.status === 'parsing'">
             {{ t('manage.progress.parsing') }}
           </template>
+          <template v-else-if="playlistStore.importProgress.total > 0">
+            {{ tParam('manage.progress.downloadingKnown', {
+              current: formatBytes(playlistStore.importProgress.current),
+              total: formatBytes(playlistStore.importProgress.total),
+              pct: String(Math.floor((playlistStore.importProgress.current / playlistStore.importProgress.total) * 100))
+            }) }}
+          </template>
           <template v-else>
-            {{ t('manage.progress.downloading') }}
+            {{ tParam('manage.progress.downloadingUnknown', {
+              current: formatBytes(playlistStore.importProgress.current)
+            }) }}
           </template>
         </p>
         <div class="w-full bg-zinc-800 rounded-full h-1.5 overflow-hidden">

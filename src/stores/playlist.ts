@@ -23,6 +23,8 @@ export const usePlaylistStore = defineStore('playlist', () => {
   const error = ref<string | null>(null)
 
   // ─── Import Progress State ─────────────────────────────────────────────────
+  const IDLE_TIMEOUT_MS = 30_000
+
   const importProgress = ref<{
     status: 'idle' | 'downloading' | 'parsing' | 'saving'
     current: number
@@ -118,28 +120,42 @@ export const usePlaylistStore = defineStore('playlist', () => {
   }
 
   async function downloadWithProgress(url: string): Promise<string> {
-    const response = await fetch(url)
-    if (!response.ok) throw new Error(`HTTP ${response.status}`)
-    const contentLength = response.headers.get('Content-Length')
-    const total = contentLength ? parseInt(contentLength, 10) : 0
-    importProgress.value = { status: 'downloading', current: 0, total }
-    const reader = response.body!.getReader()
-    const chunks: Uint8Array[] = []
-    let received = 0
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-      chunks.push(value)
-      received += value.length
-      importProgress.value.current = received
+    const controller = new AbortController()
+    let idleTimer: ReturnType<typeof setTimeout> | null = null
+
+    function resetIdleTimer() {
+      if (idleTimer !== null) clearTimeout(idleTimer)
+      idleTimer = setTimeout(() => controller.abort('idle_timeout'), IDLE_TIMEOUT_MS)
     }
-    const merged = new Uint8Array(received)
-    let pos = 0
-    for (const chunk of chunks) {
-      merged.set(chunk, pos)
-      pos += chunk.length
+
+    try {
+      resetIdleTimer()
+      const response = await fetch(url, { signal: controller.signal })
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+      const contentLength = response.headers.get('Content-Length')
+      const total = contentLength ? parseInt(contentLength, 10) : 0
+      importProgress.value = { status: 'downloading', current: 0, total }
+      const reader = response.body!.getReader()
+      const chunks: Uint8Array[] = []
+      let received = 0
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        chunks.push(value)
+        received += value.length
+        importProgress.value.current = received
+        resetIdleTimer()
+      }
+      const merged = new Uint8Array(received)
+      let pos = 0
+      for (const chunk of chunks) {
+        merged.set(chunk, pos)
+        pos += chunk.length
+      }
+      return new TextDecoder().decode(merged)
+    } finally {
+      if (idleTimer !== null) clearTimeout(idleTimer)
     }
-    return new TextDecoder().decode(merged)
   }
 
   async function importFromText(
@@ -190,10 +206,13 @@ export const usePlaylistStore = defineStore('playlist', () => {
     try {
       const finalUrl = prepareUrl(url, settingsStore.proxyEnabled && Boolean(settingsStore.proxyUrl), settingsStore.proxyUrl)
       const raw = await downloadWithProgress(finalUrl)
-      return importFromText(raw, name, 'url', url)
-    } catch (e) {
+      return await importFromText(raw, name, 'url', url)
+    } catch (e: unknown) {
       importProgress.value = { status: 'idle', current: 0, total: 0 }
-      error.value = 'Erro ao baixar a lista M3U.'
+      const isAbort = e instanceof DOMException && e.name === 'AbortError'
+      error.value = isAbort
+        ? 'Conexão lenta ou servidor parou de responder.'
+        : 'Erro ao baixar a lista M3U.'
       throw e
     } finally {
       isLoading.value = false
